@@ -35,7 +35,7 @@ test('Real discovery: Allowed on what the gateway answered (observed), with no p
     assert.ok(!r.hops.some((h) => h.kind === 'token-exchange' || h.kind === 'gateway-check'));
     assert.ok(r.hops.every((h) => h.mock === false));
     assert.ok(r.hops.every((h) => h.basis === 'observed' || h.basis === 'inferred'), 'Real hops are observed or inferred, never checked');
-    const decision = r.hops.find((h) => h.kind === 'authorize-decision');
+    const decision = r.hops.find((h) => h.kind === 'policy-check');
     assert.equal(decision.basis, 'inferred');
     assert.equal(decision.stages, undefined, 'no per-check detail is invented in Real');
     assert.equal(decision.decision, undefined);
@@ -89,6 +89,10 @@ test('Real: a wrong key is Needs sign-in (401, observed); the gateway\'s reply n
       assert.match(r.verdict.sentence, /answered 401 \(observed\).*does not say which check failed/);
       assert.deepEqual(r.hopProblems, []);
       assert.equal(r.hops.at(-2).verdict === 'skip' || r.hops.some((h) => h.verdict === 'skip'), true);
+      const leg = r.hops.find((h) => h.kind === 'discover');
+      assert.equal(leg.verdict, 'deny', 'a key that was not accepted is a refusal, not a failure');
+      assert.equal(leg.fact, '401 not accepted');
+      assert.ok(!r.hops.some((h) => h.verdict === 'error'));
     }
   } finally { await stop(); }
 });
@@ -111,6 +115,10 @@ test('Real: an unreachable gateway is Upstream error as JSON, with the cause nam
     assert.match(r.verdict.detail, /unreachable|ECONNREFUSED/i);
     assert.match(r.verdict.sentence, /could not be reached/);
     assert.equal(r.trace.response, null);
+    const noAnswer = r.hops.find((h) => h.kind === 'discover');
+    assert.equal(noAnswer.verdict, 'error', 'no answer is a failure, not a refusal');
+    assert.equal(noAnswer.fact, 'no answer');
+    assert.ok(!r.hops.some((h) => h.verdict === 'deny'));
     assert.equal(r.trace.decisions[0].outcome, 'fail');
     assert.deepEqual(assertTrace(r.trace), []);
     assert.deepEqual(r.hopProblems, []);
@@ -126,6 +134,11 @@ test('Real: an upstream 502 and 503 from the gateway are Upstream error, observe
       assert.equal(r.verdict.status, fail);
       assert.match(r.verdict.sentence, new RegExp(`answered HTTP ${fail} \\(observed\\)`));
       assert.equal(r.verdict.basis, 'observed');
+      const leg = r.hops.find((h) => h.kind === 'discover');
+      assert.equal(leg.verdict, 'error', `${fail} is a failed hop, not a refusal`);
+      assert.equal(leg.fact, `${fail} failed`);
+      assert.ok(!r.hops.some((h) => h.verdict === 'deny'), 'nothing was refused');
+      assert.deepEqual(r.hopProblems, []);
     } finally { await stop(); }
   }
 });
@@ -305,7 +318,7 @@ for (const [name, callReply] of DENY_SHAPES) {
       assert.match(r.verdict.sentence, /does not say whether .*refused.*no gateway decision is read/is);
       assert.match(r.verdict.detail, /Access denied by policy/);
       assert.doesNotMatch(r.verdict.next.join(' '), /is down/);
-      const policy = r.hops.find((h) => h.kind === 'authorize-decision');
+      const policy = r.hops.find((h) => h.kind === 'policy-check');
       assert.equal(policy.verdict, 'skip', 'no allow is inferred from the 200');
       assert.doesNotMatch(String(policy.fact), /inferred from 200/);
       assert.ok(!r.hops.some((h) => h.kind === 'tool-dispatched' && h.verdict !== 'skip'), 'the backend leg is not claimed either way');
