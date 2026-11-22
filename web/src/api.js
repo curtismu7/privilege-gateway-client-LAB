@@ -27,10 +27,16 @@ export function readWorkspace(search) {
 }
 export const workspace = readWorkspace(typeof window === "undefined" ? "" : window.location.search);
 
+// Behind the lab-proxy this page is served at /privilege-gateway-client/. The proxy sends a bare /api/... call to whichever lab last set its shared
+// `lab=` cookie, so another lab or the shelf opened in between can take the call and answer 404. Calling through the lab's own path prefix cannot
+// be redirected that way. On http://127.0.0.1:7833 the page is at the root and there is no prefix.
+const PROXY_PREFIX = "/privilege-gateway-client";
+export const apiPrefix = (pathname) => (pathname === PROXY_PREFIX || String(pathname).startsWith(`${PROXY_PREFIX}/`) ? PROXY_PREFIX : "");
+
 export async function api(path, { method = "GET", body, signal } = {}) {
   let res;
   try {
-    res = await fetch(path, {
+    res = await fetch(apiPrefix(typeof window === "undefined" ? "" : window.location.pathname) + path, {
       method,
       credentials: "same-origin",
       signal,
