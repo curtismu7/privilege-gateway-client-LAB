@@ -23,7 +23,7 @@ Shared code is not an npm dependency: it is vendored byte for byte from AI-DEMO-
 
 Step 2a (web shell and verdict): no new npm package. `@testing-library/react`, `jsdom` and `vitest` were already present; the component and hook tests need no `user-event` (they use `fireEvent`). One more shared file is vendored byte for byte and pinned, `shared/signin-dialog/SignInDialog.jsx` (web/src/signin-dialog/), for the Real page login.
 
-Step 2c: no new npm package and no new vendored file. The shared `TalkTrackDialog` was evaluated and not used (it is modal; see `docs/upstream/README.md`), so `web/src/TalkTrack.jsx` is lab code on the already-vendored `FloatingDialog`. `e2e/demo.py` and `e2e/real-stub.mjs` need only what `e2e/panels.py` already needs (python3, Playwright, Chromium) and the repo's own test helpers.
+Step 2c: no new npm package and no new vendored file. The shared `TalkTrackDialog` was evaluated and not used (it was modal then; it is non-modal since #488 but still has no default place, see `docs/upstream/README.md`), so `web/src/TalkTrack.jsx` is lab code on the already-vendored `FloatingDialog`. `e2e/demo.py` and `e2e/real-stub.mjs` need only what `e2e/panels.py` already needs (python3, Playwright, Chromium) and the repo's own test helpers.
 
 ## Step 3 (2026-11-22): `@xyflow/react`, the one new dependency
 
