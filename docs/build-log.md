@@ -226,3 +226,12 @@ Two independent reviewers (requirements and honesty; break-it) reviewed 91de5f6;
 ## 2026-11-22: catalog id moved from D143 to D144
 
 `ciba-approval-sequence-LAB` already holds D143 (its content pack and shelf entry), so this lab takes D144 (owner decision). Changed in `scripts/build-content-pack.mjs` (then `content-pack.json` was regenerated), `docs/shelf-entry.json` and its test. The older D143 lines above are history. D144 is provisional: no catalog row exists for it yet.
+
+## 2026-11-22: re-vendor of the five hop kinds and the error verdict
+
+Shared PRs #488 and #489 are merged (origin/main 7312cf6). Full account: `docs/revendor-2026-11-22.md`. Summary: five vendored files re-pinned byte for byte (plus the hop-detail README, now vendored because the new shared test reads it), `PROPOSED_KINDS` and both upstream patches deleted, hops use the real kinds, and a failed hop is verdict `error` ("failed") while a refusal stays `deny` ("denied"); the diagram, the walkthrough and the colours follow. The Talk track stays the lab's own copy (the shared one has no default place).
+
+Verified (local, inside the shared checkout, Node 26.8.2; the Air ran `air-test . -- 'npm test && npm run build'`, exit 0): server `node --test test/*.test.js` 193 of 193 locally (the byte-identity test passes with 0 differing files; on the Air it skips, 192 + 1 skipped); web vitest 25 files, 368 of 368; `scripts/*.test.mjs` 27 of 27; `npm run build` ok. Browser (Playwright, Chromium headless, Mock lab on 7961, Real stub on 7962 and 7966, never 7833): `e2e/panels.py` 285 checks, `e2e/demo.py` 426, `e2e/diagram.py` 240, `e2e/colors.py` 54, `e2e/overflow.py` 24, `e2e/fixes.py` 108, all 0 failing. `e2e/ui-patterns.sh` 2 pages clean; conformance `--new --tier=Demo` 26 PASS, 0 FAIL, 1 WARN (rule 18, deferred); `check-ui-standard.sh`, `check-css.sh`, `check-token-decode` (enforced), `check-no-ai-attribution` and gitleaks clean. Screenshots (looked at) are in `~/Development/privilege-gateway-client-shots/revendor-*`.
+
+Not verified: a Real run against a real gateway (a loopback stub only); the forbidden-strings scan (owner secret).
+
