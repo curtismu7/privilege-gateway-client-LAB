@@ -9,21 +9,15 @@
 // exchange) or 'inferred' (concluded from the outcome). Real hops are only ever observed or inferred. Gateway-internal hops
 // (token exchange, introspection) cannot be seen from a client: Mock shows them labelled `illustrative`, Real omits them.
 //
-// Kinds. The kinds this lab needs that the shared catalog does not have yet (door-picked, discover, policy-check, tool-call,
-// verdict) are proposed in docs/upstream/hop-catalog.patch. Until that is merged and re-vendored, each falls back to the nearest
-// existing kind (so the catalog's teaching text is the neighbour's); once the vendored catalog has the proposed kind it is used
-// with no code change. The lab's own `fact` is always set, so a reel frame never shows the neighbour's fact.
+// Kinds. door-picked, discover, policy-check, tool-call and verdict are in the shared catalog (AI-DEMO-Standalone #488), so every hop
+// uses its real kind. The lab sets its own `fact` on every hop, so a reel frame says what happened in this run.
+//
+// Verdicts. A hop is 'deny' only when a policy refused it (401 and 403 from the gateway, a denied decision, a refused tool). A hop that
+// could not complete (a 502, any other failed status, a JSON-RPC error, no answer, a timeout) is 'error' (demo-hop/1, AI-DEMO-Standalone
+// #489): the reel says "failed", never "denied", and the lab's own `fact` says which (502 failed, no answer).
 import { enrichHop, validateHop } from './vendor/hopDetail.mjs';
 import { newTrace, formatTraceparent } from './trace.js';
 import { MOCK_ORIGIN } from './mockGateway.js';
-
-export const PROPOSED_KINDS = Object.freeze({
-  'door-picked': 'website',
-  discover: 'privilege-gateway-leg',
-  'policy-check': 'authorize-decision',
-  'tool-call': 'privilege-gateway-leg',
-  verdict: 'agent-reply',
-});
 
 export const failed = (rec) => !rec?.response || rec.response.status >= 400 || Boolean(rec.response.body?.error);
 export const statusOf = (rec) => (Number.isInteger(rec?.response?.status) ? rec.response.status : null);
@@ -33,8 +27,9 @@ const asExchange = (rec) => (rec ? {
   response: rec.response ? { status: rec.response.status, headers: rec.response.headers ?? {}, body: rec.response.body ?? null } : { error: rec.error ?? 'no answer' },
 } : { request: {}, response: {} });
 const failFact = (rec) => (statusOf(rec) === null ? 'no answer' : `${statusOf(rec)} ${statusOf(rec) === 401 ? 'not accepted' : statusOf(rec) === 403 ? 'refused' : 'failed'}`);
-// demo-hop/1 has no 'error' verdict: a hop that was refused or failed is 'deny', and its own `fact` says which (401, 403, 502, no answer).
-const refusalVerdict = () => 'deny';
+// A failed exchange is a refusal ('deny') only when the gateway answered 401 or 403; anything else (no answer, 5xx, any other status, a JSON-RPC
+// error) is a failure ('error'). The hop's own `fact` says which (401 not accepted, 403 refused, 502 failed, no answer).
+const failureVerdict = (rec) => (statusOf(rec) === 401 || statusOf(rec) === 403 ? 'deny' : 'error');
 
 const skipped = (kind, from, to, label, why) => ({ kind, from, to, label, verdict: 'skip', note: why, request: {}, response: {}, fact: 'not reached' });
 
@@ -47,7 +42,6 @@ function stagesFrom(decisions) {
 // result: the shared door's list()/call() result with capture on (its `wire`). facts/verdict: from the run.
 export function buildHops({ source, action, door, tool, args, scenario, result, facts, verdict, catalog, gateway = null, incomingTraceparent }) {
   const mock = source === 'mock';
-  const kind = (proposed) => (catalog?.kinds && Object.hasOwn(catalog.kinds, proposed) ? proposed : PROPOSED_KINDS[proposed]);
   const wire = Array.isArray(result?.wire) ? result.wire : [];
   const initRec = lastOf(wire, 'initialize');
   const initdRec = lastOf(wire, 'notifications/initialized');
@@ -58,7 +52,7 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
 
   // 1. The browser asks this lab to open the door. The key is never in this request: it stays on the server.
   hops.push({
-    kind: kind('door-picked'), from: 'browser', to: 'lab', verdict: 'ok', basis: 'observed',
+    kind: 'door-picked', from: 'browser', to: 'lab', verdict: 'ok', basis: 'observed',
     label: action === 'call' ? `The page asks the lab to run ${tool} on ${door}` : `The page asks the lab to discover the tools on ${door}`,
     request: { method: 'POST', url: action === 'call' ? '/api/call' : '/api/discover', body: { door, ...(action === 'call' ? { tool, arguments: args } : {}), ...(mock && scenario && scenario !== 'none' ? { scenario } : {}) } },
     response: {}, fact: 'door picked, no key in the page',
@@ -70,8 +64,8 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
   const discoverOk = !setupFail;
   const sid = initRec?.response?.headers?.['mcp-session-id'];
   hops.push({
-    kind: kind('discover'), from: 'lab', to: 'privilege', basis: mock ? 'checked' : 'observed',
-    verdict: discoverOk ? 'ok' : refusalVerdict(setupFail),
+    kind: 'discover', from: 'lab', to: 'privilege', basis: mock ? 'checked' : 'observed',
+    verdict: discoverOk ? 'ok' : failureVerdict(setupFail),
     label: `The lab starts an MCP session on ${door} with the agent key`,
     ...initEx,
     fact: discoverOk ? 'session started' : failFact(setupFail),
@@ -104,13 +98,13 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
   // 3. The tools/list or tools/call exchange.
   const listing = action === 'discover';
   const primaryOk = discoverOk && primaryRec && !failed(primaryRec);
-  if (!discoverOk) hops.push(skipped(listing ? 'tools-list' : kind('tool-call'), 'lab', 'privilege', listing ? 'tools/list' : `tools/call ${tool}`, 'not reached: the session could not be started'));
+  if (!discoverOk) hops.push(skipped(listing ? 'tools-list' : 'tool-call', 'lab', 'privilege', listing ? 'tools/list' : `tools/call ${tool}`, 'not reached: the session could not be started'));
   else {
     const ex = asExchange(primaryRec);
     const n = verdict.id === 'allowed' && listing ? facts.tools?.total : null;
     hops.push({
-      kind: listing ? 'tools-list' : kind('tool-call'), from: 'lab', to: 'privilege', basis: mock ? 'checked' : 'observed',
-      verdict: primaryOk ? (verdict.id === 'held' ? 'held' : 'ok') : refusalVerdict(primaryRec),
+      kind: listing ? 'tools-list' : 'tool-call', from: 'lab', to: 'privilege', basis: mock ? 'checked' : 'observed',
+      verdict: primaryOk ? (verdict.id === 'held' ? 'held' : 'ok') : failureVerdict(primaryRec),
       label: listing ? `The lab asks ${door} which tools it may use` : `The lab asks ${door} to run ${tool}`,
       ...ex,
       fact: primaryOk ? (verdict.id === 'held' ? 'held, not run' : listing ? `${n ?? 0} tools returned` : 'HTTP 200') : failFact(primaryRec),
@@ -121,14 +115,14 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
   // 4. The gateway's decision. Mock: the lab's own simulated gateway computed it (checked). Real: read from the status (inferred).
   const decRec = !discoverOk ? (initRec ?? setupFail) : primaryRec;
   const dstatus = statusOf(decRec);
-  if (!decRec?.response) hops.push(skipped(kind('policy-check'), 'privilege', 'privilege', 'Policy decision', 'not reached: the gateway did not answer'));
+  if (!decRec?.response) hops.push(skipped('policy-check', 'privilege', 'privilege', 'Policy decision', 'not reached: the gateway did not answer'));
   else if (mock) {
     const decisions = decisionsOf(decRec);
     const stages = stagesFrom(decisions);
     const deny = (decisions ?? []).some((d) => d.outcome === 'fail' && d.id !== 'upstream');
     const hold = (decisions ?? []).some((d) => d.outcome === 'info');
     hops.push({
-      kind: kind('policy-check'), from: 'privilege', to: 'privilege', basis: 'checked',
+      kind: 'policy-check', from: 'privilege', to: 'privilege', basis: 'checked',
       verdict: deny ? 'deny' : hold ? 'held' : 'ok',
       label: 'The simulated gateway checks the key, the door\'s policy and the grant',
       request: {}, response: {},
@@ -141,7 +135,7 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
     // A 2xx is read as an allow only when the run was Allowed: an isError result, a JSON-RPC error or an unusable body over 200 can hide a refusal.
     const allowedRead = dstatus >= 200 && dstatus < 300 && verdict.id === 'allowed';
     hops.push({
-      kind: kind('policy-check'), from: 'privilege', to: 'privilege', basis: 'inferred',
+      kind: 'policy-check', from: 'privilege', to: 'privilege', basis: 'inferred',
       verdict: deny ? 'deny' : allowedRead ? 'ok' : 'skip',
       label: 'What this lab concludes about the gateway\'s decision, from the status it saw',
       request: {}, response: {},
@@ -157,13 +151,13 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
     else if (o === 'blocked') hops.push({ kind: 'tool-refused', from: 'privilege', to: 'mcp', verdict: 'deny', basis: mock ? 'checked' : 'inferred', label: 'The call was refused before the backend', request: {}, response: {}, fact: 'nothing reached the tool' });
     else if (o === 'held') hops.push({ kind: 'tool-held', from: 'privilege', to: 'hitl', verdict: 'held', basis: 'checked', label: 'SIMULATED: the gateway holds the call for a person to approve. The held body is invented by this lab.', request: {}, response: primaryRec?.response?.body?.result ?? {}, fact: 'held, not sent' });
     else if (o === 'upstream' && discoverOk && !mock && facts.outcome !== 'upstream') hops.push({ ...skipped('tool-dispatched', 'privilege', 'mcp', 'Backend', 'not known: the reply does not say whether the call reached the tool'), fact: 'not known' });
-    else if (o === 'upstream' && discoverOk && (mock || facts.outcome === 'upstream')) hops.push({ kind: 'tool-dispatched', from: 'privilege', to: 'mcp', verdict: 'deny', basis: mock ? 'checked' : 'inferred', label: 'The backend did not answer', request: {}, response: {}, fact: 'backend failed, nothing returned' });
+    else if (o === 'upstream' && discoverOk && (mock || facts.outcome === 'upstream')) hops.push({ kind: 'tool-dispatched', from: 'privilege', to: 'mcp', verdict: 'error', basis: mock ? 'checked' : 'inferred', label: 'The backend did not answer', request: {}, response: {}, fact: 'backend failed, nothing returned' });
     else hops.push(skipped('tool-dispatched', 'privilege', 'mcp', 'Backend', 'not reached'));
   }
 
   // 6. The verdict goes back to the page.
   hops.push({
-    kind: kind('verdict'), from: 'lab', to: 'browser', verdict: 'ok', basis: verdict.basis === 'checked' ? 'checked' : verdict.basis,
+    kind: 'verdict', from: 'lab', to: 'browser', verdict: 'ok', basis: verdict.basis === 'checked' ? 'checked' : verdict.basis,
     label: `The lab shows the verdict: ${verdict.word}`,
     request: {}, response: { status: 200, body: { verdict: verdict.id, word: verdict.word, sentence: verdict.sentence } },
     fact: verdict.word,
@@ -180,7 +174,7 @@ export function buildHops({ source, action, door, tool, args, scenario, result, 
     const { _extra, fact, basis, illustrative, ...h } = raw;
     const base = { ...h, n: i + 1, mock, ...(h.verdict !== 'skip' ? { traceparent: formatTraceparent(trace.traceId, trace.span()) } : {}) };
     const enriched = enrichHop(base, catalog, _extra ?? {}, { tokens });
-    // `fact`, `basis` and `illustrative` are the lab's own words and are set after enrichment, so the catalog neighbour's fact never leaks into a reel frame.
+    // `fact`, `basis` and `illustrative` are the lab's own words and are set after enrichment, so the catalog's generic fact never replaces what happened in this run.
     enriched.fact = fact ?? enriched.fact;
     enriched.basis = basis ?? (h.verdict === 'skip' ? 'inferred' : 'observed');
     if (illustrative) enriched.illustrative = true;

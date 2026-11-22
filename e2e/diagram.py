@@ -338,14 +338,14 @@ def desktop(browser, theme):
     reds = page.evaluate(RED_SCAN, '[data-testid="panel-diagram"]')
     check(T + "blocked: nothing inside the Diagram panel is red", reds == [], str(reds[:6]))
     stop = text(page, '[data-testid="dg-now"]') or ""
-    check(T + "blocked: before the walk the caption says where Simulate will stop", "Simulate stops at message" in stop and "Authorize" in stop and "Blocked by policy" in stop, stop)
+    check(T + "blocked: before the walk the caption says where Simulate will stop", "Simulate stops at message" in stop and "Policy decision" in stop and "Blocked by policy" in stop, stop)
     page.click('[data-testid="panel-diagram"] [data-testid="step-toggle"]')
     import re
     m = re.search(r"message (\d+),", stop)
     want = int(m.group(1)) if m else -1
     page.wait_for_function("(n) => document.querySelector('[data-testid=\"panel-diagram\"] [data-testid=\"step-counter\"]').textContent.startsWith('Message ' + n + ' of')", arg=want, timeout=20000)
     page.wait_for_timeout(2500)
-    check(T + "blocked: Simulate stops at the policy decision and says so", (counter(page) or "").startswith(f"Message {want} of") and "Authorize" in stop and "where this run ended" in stop, f"{counter(page)} / {stop}")
+    check(T + "blocked: Simulate stops at the policy decision and says so", (counter(page) or "").startswith(f"Message {want} of") and "Policy decision" in stop and "where this run ended" in stop, f"{counter(page)} / {stop}")
     check(T + "blocked: the walked arrow is the policy decision", page.evaluate("[...document.querySelectorAll('.dk-label--on')].map(l => l.textContent)") == ["3. who is calling, and may they?"])
     shot(page, "blocked", "1440x900", theme)
     r = overlap_report(page)

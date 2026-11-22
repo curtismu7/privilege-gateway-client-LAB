@@ -297,7 +297,7 @@ describe("what each panel shows for each kind of run", () => {
     await waitFor(() => expect(within(tid("panel-reel")).getByTestId("step-toggle")).toHaveTextContent("Replay"), { timeout: 15000 });
     expect(tid("run-note")).toHaveAttribute("data-verdict", "blocked");
     expect(tid("run-note-word")).toHaveTextContent("Blocked by policy");
-    expect(tid("run-note-stop")).toHaveTextContent(/Simulate stops at message \d+, Authorize/);
+    expect(tid("run-note-stop")).toHaveTextContent(/Simulate stops at message \d+, Policy decision/);
     const on = document.querySelector('[data-testid="panel-reel"] .rl-f[aria-current="step"]');
     expect(on).toHaveAttribute("data-verdict", "deny");
     expect(on.textContent).toMatch(/denied/);
@@ -328,6 +328,24 @@ describe("what each panel shows for each kind of run", () => {
     expect(tid("panel-reel").className).not.toContain("pgc-fd--red");
     expect(tid("panel-reel").className).not.toContain("pgc-fd--refusal"); // an upstream failure is not a refusal: no lock
   });
+
+  test("an upstream failure reads 'failed', not 'denied': the failed frame is verdict error, Simulate stops on it, no frame says denied", async () => {
+    await mount();
+    click("door-demo-all-tools");
+    fireEvent.change(document.getElementById("pgc-scenario"), { target: { value: "upstream-error" } });
+    click("action-discover");
+    await waitWord("Upstream error");
+    open("reel");
+    click(within(tid("panel-reel")).getByTestId("step-toggle")); // Simulate
+    await waitFor(() => expect(within(tid("panel-reel")).getByTestId("step-toggle")).toHaveTextContent("Replay"), { timeout: 15000 });
+    const on = document.querySelector('[data-testid="panel-reel"] .rl-f[aria-current="step"]');
+    expect(on).toHaveAttribute("data-verdict", "error");
+    expect(on.textContent).toMatch(/failed/);
+    expect(on.textContent).not.toMatch(/denied/);
+    expect(within(tid("panel-reel")).getByTestId("sdp-status")).toHaveTextContent("failed");
+    expect(document.querySelector('[data-testid="panel-reel"] .rl-f[data-verdict="deny"]')).toBeNull();
+    expect(tid("panel-reel").className).not.toContain("pgc-fd--red"); // amber with the word in Mock, never red
+  }, 20000);
 
   test("a blocked door: the reel ends at its decision, hops that did not run sit behind the 'not in this run' chip", async () => {
     await mount();
@@ -435,7 +453,7 @@ describe("token sequence", () => {
   });
 
   test("Real: no token is invented; the panel says only an agent key is held and it is never shown", () => {
-    const run = { id: "r", source: "real", simulated: false, verdict: { id: "allowed", word: "Allowed", sentence: "ok" }, hops: [{ n: 1, kind: "website", from: "browser", to: "lab", verdict: "ok", title: "Website", request: { headers: { Authorization: "Bearer <agent key, 42 characters, kept on the server>" } }, response: {} }] };
+    const run = { id: "r", source: "real", simulated: false, verdict: { id: "allowed", word: "Allowed", sentence: "ok" }, hops: [{ n: 1, kind: "door-picked", from: "browser", to: "lab", verdict: "ok", title: "Door picked", request: { headers: { Authorization: "Bearer <agent key, 42 characters, kept on the server>" } }, response: {} }] };
     const Wrap = () => { const s = useRunStepper(run.hops, "allowed"); return <TokensPanel run={run} stepper={s} live />; };
     render(<Wrap />);
     expect(screen.getByTestId("tokens-intro")).toHaveTextContent(/Real: this lab only holds an agent key/);
@@ -520,6 +538,14 @@ describe("colour rules for the panels (static)", () => {
     expect(block).toMatch(/\.pgc-fd--refusal \.rl-f\[data-verdict="deny"\]/);
     expect(block).toMatch(/\.rl-f\[data-verdict="deny"\] \.rl-f__st::before/);
     expect(block).toMatch(/\.ev-tag\[data-state="bad"\]::before/);
+  });
+});
+
+describe("colour rules for a failed hop (static)", () => {
+  test("an error hop's word and sequence label use --danger-text (amber unless the run is a Real upstream failure) and carry no lock", () => {
+    expect(css).toMatch(/\.pgc-fd \.rl-f\[data-verdict="error"\] \.rl-f__st \{ color: var\(--danger-text\)/);
+    expect(css).toMatch(/\.pgc-fd \.sq-row\[data-verdict="error"\] \.sq-al \{ fill: var\(--danger-text\)/);
+    expect(css).not.toMatch(/data-verdict="error"\][^{]*::before/);
   });
 });
 

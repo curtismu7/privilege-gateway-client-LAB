@@ -20,7 +20,7 @@ const UNITS = [
   ['trace', ['trace.js']],
   ['shelf-link-server', ['shelfLink.js']],
   ['gateway-real', ['gatewayReal.js']],
-  ['hop-detail', ['vendor/hop-catalog.json', 'vendor/hopDetail.mjs', 'vendor/hopDetail.test.mjs']],
+  ['hop-detail', ['vendor/hop-catalog.json', 'vendor/hopDetail.mjs', 'vendor/hopDetail.test.mjs', 'vendor/README.md']],
 ];
 
 // Problems with one unit under a repo root (an empty list means the pin file lists exactly the unit's files and every hash matches).
@@ -86,6 +86,7 @@ const CANONICAL = [
   ['server/src/vendor/hopDetail.mjs', 'hop-detail/hopDetail.mjs'],
   ['server/src/vendor/hop-catalog.json', 'hop-detail/hop-catalog.json'],
   ['server/src/vendor/hopDetail.test.mjs', 'hop-detail/hopDetail.test.mjs'],
+  ['server/src/vendor/README.md', 'hop-detail/README.md'],
 ];
 // Whole folders: every file the lab carries there that is not a pin or a lab-owned doc.
 for (const d of ['top-menu', 'evidence', 'floating-dialog', 'gateway-trace', 'signin-dialog']) {

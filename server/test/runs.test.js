@@ -31,7 +31,7 @@ function assertHopsAreSound(r) {
   assert.equal(new Set(ran.map((h) => h.traceparent.split('-')[2])).size, ran.length, 'a new span id per hop');
   const firstSkip = r.hops.findIndex((h) => h.verdict === 'skip');
   if (firstSkip >= 0) assert.ok(r.hops.slice(firstSkip).every((h) => h.verdict === 'skip'), 'skipped hops come after every hop that ran');
-  assert.equal(r.hops.at(-1).kind === 'verdict' || r.hops.some((h) => h.kind === 'verdict' || h.kind === 'agent-reply'), true);
+  assert.equal(r.hops.some((h) => h.kind === 'verdict'), true);
 }
 
 test('demo-all-tools: Allowed, 18 tools all permitted, one ordered hop array through the actors', async () => {
@@ -44,7 +44,7 @@ test('demo-all-tools: Allowed, 18 tools all permitted, one ordered hop array thr
   assert.ok(r.tools.every((t) => t.permitted === true));
   assert.deepEqual(r.tools.map((t) => t.name), TOOLS.map((t) => t.name));
   assert.ok(r.tools.every((t) => t.description && typeof t.args === 'object'));
-  assert.deepEqual(kinds(r), ['website:ok', 'privilege-gateway-leg:ok', 'token-exchange:ok', 'gateway-check:ok', 'tools-list:ok', 'authorize-decision:ok', 'agent-reply:ok']);
+  assert.deepEqual(kinds(r), ['door-picked:ok', 'discover:ok', 'token-exchange:ok', 'gateway-check:ok', 'tools-list:ok', 'policy-check:ok', 'verdict:ok']);
   assert.deepEqual(r.hops.map((h) => `${h.from}>${h.to}`), ['browser>lab', 'lab>privilege', 'privilege>idp', 'privilege>idp', 'lab>privilege', 'privilege>privilege', 'lab>browser']);
   assertHopsAreSound(r);
   assert.equal(r.trace.source, 'mock');
@@ -84,7 +84,7 @@ test('demo-blocked: Blocked by policy before any tool is listed; nothing after t
   assert.equal(r.verdict.status, 403);
   assert.equal(r.tools, null);
   assert.match(r.verdict.sentence, /has no policy/);
-  assert.deepEqual(kinds(r), ['website:ok', 'privilege-gateway-leg:deny', 'authorize-decision:deny', 'agent-reply:ok', 'tools-list:skip']);
+  assert.deepEqual(kinds(r), ['door-picked:ok', 'discover:deny', 'policy-check:deny', 'verdict:ok', 'tools-list:skip']);
   assert.equal(r.hops.find((h) => h.kind === 'tools-list').note, 'not reached: the session could not be started');
   assert.equal(r.hops.filter((h) => h.illustrative).length, 0, 'no gateway-internal hops when the door refused');
   assertHopsAreSound(r);
@@ -107,9 +107,9 @@ test('a call inside the grant is Allowed, labelled simulated, with the tool-disp
   const r = await call('demo-some-tools', 'get_investment_transactions');
   assert.equal(r.verdict.id, 'allowed');
   assert.match(r.verdict.sentence, /simulated backend returned a sample/);
-  assert.deepEqual(kinds(r), ['website:ok', 'privilege-gateway-leg:ok', 'token-exchange:ok', 'gateway-check:ok', 'privilege-gateway-leg:ok', 'authorize-decision:ok', 'tool-dispatched:ok', 'agent-reply:ok']);
+  assert.deepEqual(kinds(r), ['door-picked:ok', 'discover:ok', 'token-exchange:ok', 'gateway-check:ok', 'tool-call:ok', 'policy-check:ok', 'tool-dispatched:ok', 'verdict:ok']);
   assert.equal(JSON.parse(r.result.text).simulated, true);
-  assert.equal(r.hops.find((h) => h.kind === 'website').request.body.tool, 'get_investment_transactions');
+  assert.equal(r.hops.find((h) => h.kind === 'door-picked').request.body.tool, 'get_investment_transactions');
   assertHopsAreSound(r);
 });
 
@@ -139,7 +139,7 @@ test('open_ticket on demo-all-tools is Held (simulated, body invented); on demo-
   assert.equal(r.verdict.id, 'held');
   assert.equal(r.verdict.word, 'Held');
   assert.match(r.verdict.sentence, /simulated and its body is invented/);
-  assert.deepEqual(kinds(r).slice(-3), ['authorize-decision:held', 'tool-held:held', 'agent-reply:ok']);
+  assert.deepEqual(kinds(r).slice(-3), ['policy-check:held', 'tool-held:held', 'verdict:ok']);
   assert.equal(r.hops.find((h) => h.kind === 'tool-held').to, 'hitl');
   assert.match(r.hops.find((h) => h.kind === 'tool-held').narrative, /SIMULATED.*invented/);
   assert.equal(r.result, null, 'a held call has no result');
@@ -152,6 +152,29 @@ test('scenario upstream-error: the long simulated message is shown to its last s
   assert.equal(r.verdict.id, 'upstream');
   assert.match(r.verdict.detail, /Request id mock-502\./, 'the end of the simulated message is there');
   assert.ok(!/shortened/.test(r.verdict.detail));
+});
+
+test('scenario upstream-error: the failed hops are verdict error (fact "502 failed"), never deny; a refusal keeps deny', async () => {
+  const d = await discover('demo-all-tools', { scenario: 'upstream-error' });
+  const failedDiscover = d.hops.find((h) => h.verdict === 'error');
+  assert.ok(failedDiscover, 'a failed hop is error');
+  assert.equal(failedDiscover.fact, '502 failed');
+  assert.ok(!d.hops.some((h) => h.verdict === 'deny'), 'a failure is never a refusal');
+  assert.deepEqual(d.hopProblems, []);
+  const c = await call('demo-all-tools', 'who_has_role', { role: 'x' }, { scenario: 'upstream-error' });
+  assert.ok(kinds(c).includes('tool-call:error'), kinds(c).join());
+  assert.ok(kinds(c).includes('tool-dispatched:error'), kinds(c).join());
+  assert.equal(c.hops.find((h) => h.kind === 'tool-call').fact, '502 failed');
+  assert.equal(c.hops.find((h) => h.kind === 'tool-dispatched').fact, 'backend failed, nothing returned');
+  assert.ok(!c.hops.some((h) => h.verdict === 'deny'));
+  assert.deepEqual(c.hopProblems, []);
+  // a refusal (403) and a key that was not accepted (401) stay deny, and say refused / not accepted
+  const refused = await call('demo-some-tools', 'sensitive_tax_record');
+  assert.ok(!refused.hops.some((h) => h.verdict === 'error'));
+  assert.equal(refused.hops.find((h) => h.kind === 'tool-refused').verdict, 'deny');
+  const noKey = await discover('demo-all-tools', { scenario: 'no-key' });
+  assert.equal(noKey.hops.find((h) => h.kind === 'discover').verdict, 'deny');
+  assert.equal(noKey.hops.find((h) => h.kind === 'discover').fact, '401 not accepted');
 });
 
 test('scenario upstream-error: Upstream error (502), JSON detail, not a policy decision, never a hang', async () => {
@@ -180,7 +203,7 @@ test('scenarios no-key and bad-key: Needs sign-in (401), the handshake stops, no
       assert.equal(r.verdict.status, 401);
       assert.match(r.verdict.sentence, scenario === 'no-key' ? /carried no agent key/ : /agent key was not accepted/);
       assert.equal(r.hops.filter((h) => h.illustrative).length, 0);
-      assert.equal(r.hops.find((h) => h.kind === 'privilege-gateway-leg').response.headers['www-authenticate'].startsWith('Bearer realm='), true);
+      assert.equal(r.hops.find((h) => h.kind === 'discover').response.headers['www-authenticate'].startsWith('Bearer realm='), true);
       assertHopsAreSound(r);
     }
   }

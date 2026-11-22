@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { validateDiagram, SCHEMA } from "./diagramSchema.js";
 import { checked, diagramNames, loadDiagram } from "./loadDiagram.js";
-import { CALL_PATH, HOP_ALIASES, callPathDiagram, graphOf, outcomeNode, pathEdges, stepForHop } from "./callPath.js";
+import { CALL_PATH, callPathDiagram, graphOf, outcomeNode, pathEdges, stepForHop } from "./callPath.js";
 import { createTestApi } from "../testLab.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -44,11 +44,11 @@ describe("the diagram file and its loader", () => {
     expect(hops.every(Boolean)).toBe(true);
     expect(new Set(hops).size).toBe(hops.length);
   });
-  test("every step hop is a kind the server can emit (the vendored catalog), a verdict form of one, or an alias", async () => {
+  test("every step hop is a kind of the shared catalog (the vendored one) or a verdict form of one", async () => {
     const catalog = (await import("../../../server/src/vendor/hop-catalog.json")).default;
     for (const s of file.steps) {
       const kind = s.hop.split(":")[0];
-      expect(Object.hasOwn(catalog.kinds, kind) || Object.hasOwn(HOP_ALIASES, kind), `${s.hop} is not a hop kind`).toBe(true);
+      expect(Object.hasOwn(catalog.kinds, kind), `${s.hop} is not a hop kind`).toBe(true);
     }
   });
   test("graphOf is the kit's graph: boxes, arrows with their labels, groups", () => {
@@ -91,16 +91,20 @@ describe("the validator (this lab's own copy of the studio's limits)", () => {
 describe("mapping a run onto the diagram", () => {
   const d = file;
   const hop = (kind, verdict = "ok") => ({ kind, verdict });
-  test("a hop finds its step by kind, the verdict form first, then the proposed-kind alias", () => {
-    expect(d.steps[stepForHop(d, hop("website"))].title).toMatch(/Pick a door/);
+  test("a hop finds its step by its shared kind, the verdict form first", () => {
+    expect(d.steps[stepForHop(d, hop("door-picked"))].title).toMatch(/Pick a door/);
     expect(d.steps[stepForHop(d, hop("tool-dispatched", "ok"))].hop).toBe("tool-dispatched");
-    expect(d.steps[stepForHop(d, hop("tool-dispatched", "deny"))].hop).toBe("tool-dispatched:deny");
-    expect(d.steps[stepForHop(d, hop("verdict"))].hop).toBe("agent-reply");
-    expect(d.steps[stepForHop(d, hop("policy-check"))].hop).toBe("authorize-decision");
-    expect(d.steps[stepForHop(d, hop("tool-call"))].hop).toBe("privilege-gateway-leg");
+    expect(d.steps[stepForHop(d, hop("tool-dispatched", "error"))].hop).toBe("tool-dispatched:error");
+    expect(d.steps[stepForHop(d, hop("tool-dispatched", "deny"))].hop, "a verdict with no step of its own finds the kind's step").toBe("tool-dispatched");
+    expect(d.steps[stepForHop(d, hop("verdict"))].hop).toBe("verdict");
+    expect(d.steps[stepForHop(d, hop("policy-check"))].hop).toBe("policy-check");
+    expect(d.steps[stepForHop(d, hop("tool-call"))].hop).toBe("tool-call");
+    expect(d.steps[stepForHop(d, hop("discover"))].hop).toBe("discover");
+    expect(stepForHop(d, hop("website"))).toBe(-1);
+    expect(stepForHop(d, hop("agent-reply"))).toBe(-1);
     expect(stepForHop(d, hop("sign-in"))).toBe(-1);
     expect(stepForHop(d, null)).toBe(-1);
-    expect(stepForHop({ steps: undefined }, hop("website"))).toBe(-1);
+    expect(stepForHop({ steps: undefined }, hop("door-picked"))).toBe(-1);
   });
   test("the outcome box is verdict-<id> when the diagram has one, else none", () => {
     expect(outcomeNode(d, "allowed")).toBe("verdict-allowed");

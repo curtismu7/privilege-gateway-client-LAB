@@ -1,34 +1,20 @@
 # Proposed upstream changes (for an owner-approved AI-DEMO-Standalone PR)
 
-This lab never edits shared code. What it needs from `shared/` is written here as a ready-to-apply patch. Nothing here has been sent anywhere.
+This lab never edits shared code. What it needs from `shared/` is written here. Items already merged are listed first and kept for the record; the rest are still open.
 
-## `hop-catalog.patch` (shared/hop-detail/hop-catalog.json)
+## Merged upstream (re-vendored 2026-11-22, see `docs/revendor-2026-11-22.md`)
 
-Adds five hop kinds the lab emits and the shared catalog does not have: `door-picked`, `discover`, `policy-check`, `tool-call`, `verdict`. Apply from the AI-DEMO-Standalone root:
+| What | PR | What the lab did |
+|---|---|---|
+| Five hop kinds (`door-picked`, `discover`, `policy-check`, `tool-call`, `verdict`) in `shared/hop-detail/hop-catalog.json` | AI-DEMO-Standalone #488 | Re-vendored the catalog. `server/src/hops.js` now emits the real kinds and the fallback table (`PROPOSED_KINDS`) is gone. `hop-catalog.patch` and the test that applied it are deleted. The call-path diagram's steps name the real kinds. |
+| `TalkTrackDialog` opens non-modal (`noBackdrop`) | #488 | The modal complaint (step 2c) is resolved upstream and `talk-track-no-backdrop.patch` is deleted. The lab keeps its own `web/src/TalkTrack.jsx` for a different reason, see "Still open" below. |
+| `demo-hop/1` verdict `error` ("failed", never "denied") | #489 | Re-vendored `hopDetail.mjs`, `evidence/lanes.js` and the tests. A hop that could not complete is `error`; a refusal stays `deny`. |
 
-    git apply --check docs/upstream/hop-catalog.patch && git apply docs/upstream/hop-catalog.patch
+## Still open
 
-(`server/test/upstream.test.js` applies it to the vendored copy, which is byte-identical to the canonical file, and checks that only those kinds are added and every run still validates.) After it merges, re-vendor `hop-catalog.json` here: `server/src/hops.js` uses a proposed kind as soon as the vendored catalog has it, with no code change.
-
-Until then each proposed kind falls back to the nearest existing one, so the lab ships and validates today:
-
-| Proposed | Falls back to |
-|---|---|
-| `door-picked` | `website` |
-| `discover` | `privilege-gateway-leg` |
-| `policy-check` | `authorize-decision` |
-| `tool-call` | `privilege-gateway-leg` |
-| `verdict` | `agent-reply` |
-
-A fallback lends its teaching text (`spec`) but never its `fact`: the lab sets its own fact on every hop, so a reel frame never says "cookie only, no token" for a door pick.
-
-## `lanes.patch`: none needed
+## `lanes.patch`: none needed (still true)
 
 The lab uses the existing actor ids (`browser`, `lab`, `privilege`, `mcp`, `idp`, `hitl`) as they are, so there is no `lanes.patch`. One caveat for step 2: the actor-card text of `lab` ("looks a command key up in a fixed allow-list") and `mcp` ("checks the bearer again") describes other labs. If that text shows in this lab's cards, either accept it or propose new actors upstream then.
-
-## A gap worth raising upstream
-
-`demo-hop/1` verdicts are `ok | deny | held | obligation | skip`. A hop that failed (a 502, no answer) has no value of its own. This lab marks it `deny` and puts the plain failure in `fact` ("502 failed", "no answer"), but the reel's word for `deny` is "denied". A real `error` verdict would be more honest.
 
 ## Found in step 2b (the panels): shared behaviour to raise, nothing changed here
 
@@ -37,14 +23,12 @@ Each of these is in vendored code this lab must not edit. The lab works around i
 1. **A pop-out cannot host a nested dialog.** `FloatingDialog` always portals into the opener's `document.body`. Inside a popped-out Sequence panel, clicking an actor opens the shared `ActorCard` (a `FloatingDialog`) in the OPENER window, not in the popup (`e2e/panels.py` prints this as an `INFO` line). A fix upstream: portal into the `ownerDocument` of the element the dialog is rendered from (a ref on a hidden marker node), or accept a `container` prop. Until then the card is usable but in the wrong window.
 2. **The shared reel and sequence carry their own walkers.** `MovieReel` has Run and Speed with its own interval, `SequenceView` has Slow, Play and Prev/Next with its own timer. Section 8f says a lab adds no second stepper, so this lab drives `selected` from one stepper and these two controls simply call the same `onSelect` (a click on Run moves the one walk, paused on a hop). A `controls={false}` prop, or a controlled `playing` / `onPlayingChange`, would let a lab hide them.
 3. **Red inside the evidence parts.** The active step (reel frame outline, sequence row, step-detail number and top edge), every pressed toggle, the `FloatingDialog` top edge and `MovieReel`'s Run button are drawn with `--accent` (Ping Red) or `button.primary`, and a refused hop's word with `--danger-text`. This lab's brief keeps red for Sign in, the thin header rule and real errors, so `app.css` redefines those TOKENS inside `.pgc-fd` (ink for `--accent`, amber for `--danger-text` unless the run is a Real upstream failure). It restyles no selector. A shared `--ev-active` token, separate from `--accent`, would make this one line upstream.
-4. **`denied` for a failure.** (Already listed above.) In the reel a 502 reads "denied" because `demo-hop/1` has no `error` verdict; this lab keeps the lock icon for refusals only (`.pgc-fd--refusal`) so an upstream failure does not look like a policy refusal.
+4. **`denied` for a failure.** MERGED (#489): `demo-hop/1` has an `error` verdict and the reel says "failed". The lab keeps the lock icon for refusals only (`.pgc-fd--refusal`), so a failure does not look like a policy refusal. One follow-up for upstream: `evidence.css` has rules for the `deny`, `held` and `skip` verdicts only, so an `error` frame, sequence row and label get no colour or line style from the shared file. The lab adds three rules for `error` in `app.css` (word and sequence label in `--danger-text`, a dotted sequence line). A shared rule would let every lab drop them.
 5. **Toolbar width.** The shared `SequenceView` and `MovieReel` toolbars are about 700px wide and do not wrap, so a panel under that width scrolls sideways. The lab's default panel widths (780 and 960) avoid it on a 1440px screen; at 600px and below the panel is a full-width sheet and the toolbars wrap.
 
-## Found in step 2c (talk track): the shared TalkTrackDialog is modal
+## Found in step 2c (talk track): modal dialog MERGED (#488); a default place is still open
 
-`shared/talk-track/TalkTrackDialog.jsx` (origin/main 0198a2a) renders a `FloatingDialog` without `noBackdrop`, so opening it dims the page with a backdrop, sets `aria-modal` and holds Tab inside. Its README and `STANDALONE-UI-PATTERNS.md` 8d.1 say it is docked beside the page, and 8f says nothing that opens during a walkthrough may block the controls. The Talk track is used while stepping through the reel, so it must not block the page.
-
-This lab therefore does NOT use the vendored dialog: `web/src/TalkTrack.jsx` is the same panel (same props, test ids and `singletonKey`) with `noBackdrop`. The upstream fix is one line, `docs/upstream/talk-track-no-backdrop.patch`. When it lands, delete `TalkTrack.jsx`, vendor `TalkTrackDialog.jsx` with a pin and import it in `App.jsx`. A second small upstream point: the panel opens at the very top right of the window (`placement="right"` puts it at y=16), over the header's Mode, Reset and Sign in controls; this lab seeds the dialog's remembered place (`panels/talkPlace.js`) so it opens under the header.
+The shared `TalkTrackDialog` was modal (no `noBackdrop`); #488 fixed that. What is still missing is a default place: the shared dialog takes no `place` / `defaultX` / `defaultY` and opens at the very top right of the window (`placement="right"` puts it at y=16), over the header's Mode, Reset and Sign in controls. This lab seeds the dialog's remembered place (`panels/talkPlace.js`) and, for a browser that cannot store anything (a private window), passes the same place as the dialog's defaults. The vendored dialog cannot do the second part, so the lab keeps `web/src/TalkTrack.jsx` (the same panel with a `place` prop) and `e2e/fixes.py` N3 ("talk-place-nostorage") keeps guarding it. Upstream fix: let `TalkTrackDialog` pass `defaultX`, `defaultY`, `defaultWidth` and `defaultHeight` through (a `place` prop); then delete the lab's `TalkTrack.jsx` and vendor the shared one with a pin.
 
 ## Found in step 3 (the Diagram panel): shared code to raise, nothing changed here
 

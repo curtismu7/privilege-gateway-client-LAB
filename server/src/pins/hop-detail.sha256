@@ -1,4 +1,5 @@
-# vendored byte for byte from AI-DEMO-Standalone origin/main @ 6a637fd, shared/hop-detail. Re-vendor from canonical and re-pin; never edit the copy.
-001e46d71bad19867f79accb73d71f84b3ae555996485f1c4d11b78530c135da  vendor/hopDetail.mjs
-51aa3055f2648b76aa3cd7455de920aa36fb667489025d382c8d687236bdabf7  vendor/hop-catalog.json
-89bac44c929d13bc0769e3afe9445de800d1f5bd226aff27f444bc751690e73f  vendor/hopDetail.test.mjs
+# vendored byte for byte from AI-DEMO-Standalone origin/main @ 7312cf6, shared/hop-detail. Re-vendor from canonical and re-pin; never edit the copy.
+2d4f72c6a66dfa80f830d38e0c4a8353d08b275492b951316253bfe5a5e5acca  vendor/hopDetail.mjs
+e571d0a26994d84a7f05e49bf35036014d4d254933fed0409af220f0014d24a1  vendor/hop-catalog.json
+5d709f7bb4cca73cdbf0f10741e180906f6cdadd50b807e71395898e9a3f2dd8  vendor/hopDetail.test.mjs
+4f46f0511d753a98ab65b6795becf7bbe9a56ba6e55d8c8a7efd8ae940641079  vendor/README.md

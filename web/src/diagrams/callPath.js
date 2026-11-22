@@ -4,10 +4,6 @@ import { loadDiagram } from "./loadDiagram.js";
 
 export const CALL_PATH = "pgc-call-path";
 
-// Hop kinds this lab's server may use once the shared catalog has the proposed kinds (server/src/hops.js PROPOSED_KINDS): until then each is the
-// neighbour kind on the right. The diagram's steps are written with the kinds the server emits today; both spellings find the same step.
-export const HOP_ALIASES = Object.freeze({ "door-picked": "website", discover: "privilege-gateway-leg", "tool-call": "privilege-gateway-leg", "policy-check": "authorize-decision", verdict: "agent-reply" });
-
 /** The diagram as the kit's graph ({ nodes, edges, groups }): a diagram-studio/1 document already is one. */
 export const graphOf = (d) => ({
   nodes: d.nodes.map((n) => ({ id: n.id, label: n.label, sub: n.sub, group: n.group })),
@@ -15,11 +11,10 @@ export const graphOf = (d) => ({
   groups: d.groups,
 });
 
-/** The step (index into d.steps) a hop is the walk of, or -1. A step names its hop as `kind` or `kind:verdict` (the verdict form is tried first). */
+/** The step (index into d.steps) a hop is the walk of, or -1. A step names its hop as `kind` or `kind:verdict` (the verdict form is tried first), with the shared hop-catalog kinds. */
 export function stepForHop(d, hop) {
   if (!hop || !Array.isArray(d.steps)) return -1;
-  const kinds = [hop.kind, HOP_ALIASES[hop.kind]].filter(Boolean);
-  for (const k of kinds) for (const name of [`${k}:${hop.verdict}`, k]) {
+  for (const name of [`${hop.kind}:${hop.verdict}`, hop.kind]) {
     const i = d.steps.findIndex((s) => s.hop === name);
     if (i >= 0) return i;
   }
