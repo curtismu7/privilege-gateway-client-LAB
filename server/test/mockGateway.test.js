@@ -182,7 +182,7 @@ test('tools/call: a tool outside the grant is 403 for each of the 11, and never 
 test('tools/call: open_ticket on demo-all-tools is held, labelled simulated, and says its body is invented', async () => {
   const gw = createMockGateway();
   const s = await openSession(gw, 'demo-all-tools');
-  const r = await call(gw, 'demo-all-tools', s, 'open_ticket', { title: 'x', action: 'flag' });
+  const r = await call(gw, 'demo-all-tools', s, 'open_ticket', { user: 'carol.nguyen', resource: 'prod-db-primary', action: 'review', justification: 'x' });
   assert.equal(r.status, 200);
   assert.equal(r.json.result._meta.held, true);
   assert.equal(r.json.result._meta.inventedBody, true);
@@ -260,4 +260,18 @@ test('the signer is HMAC from node:crypto: no EC key generation exists in the se
   const dir = new URL('../src/', import.meta.url);
   const pattern = new RegExp(['generateKey', 'Pair(Sync)?\\('].join(''));
   for (const f of readdirSync(dir).filter((x) => x.endsWith('.js'))) assert.ok(!pattern.test(readFileSync(new URL(f, dir), 'utf8')), f);
+});
+
+test('every tool sample carries data: no empty array and no empty object anywhere in it', () => {
+  const empty = (v) => (Array.isArray(v) ? v.length === 0 || v.some(empty) : v && typeof v === 'object' ? Object.keys(v).length === 0 || Object.values(v).some(empty) : false);
+  for (const t of TOOLS) assert.ok(!empty(t.sample), `${t.name} sample has an empty array or object`);
+});
+
+test('the access tools use the argument names and ids the real access-review backend knows', () => {
+  const byName = Object.fromEntries(TOOLS.map((t) => [t.name, t]));
+  assert.deepEqual(byName.list_entitlements.args, { user: 'carol.nguyen' });
+  assert.deepEqual(byName.who_has_role.args, { role: 'prod-db-admin' });
+  assert.deepEqual(byName.get_access_grants.args, { resource: 'prod-db-primary' });
+  assert.deepEqual(byName.get_access_grants.required, ['resource']);
+  assert.deepEqual(byName.open_ticket.required, ['user', 'resource', 'action', 'justification']);
 });

@@ -152,7 +152,7 @@ describe("useLab", () => {
     await act(async () => { await lab().reset(); });
     expect(calls.some((c) => c.path === "/api/reset" && c.method === "POST")).toBe(true);
     expect(lab().lastRun).toBeNull();
-    expect(lab().argsFor("who_has_role")).toContain("Treasury Approver");
+    expect(lab().argsFor("who_has_role")).toContain("prod-db-admin");
     expect(lab().info.source).toBe("mock");
   });
 
