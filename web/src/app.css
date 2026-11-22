@@ -31,9 +31,15 @@ html { -webkit-text-size-adjust: 100%; font-size: var(--fs, 16px); }
 .pgc-spin { animation: pgc-turn 1s linear infinite; }
 @keyframes pgc-turn { to { transform: rotate(360deg); } }
 
-/* The one emphasised action of a view: ink, not red (red is reserved for Sign in and real errors). */
-.pgc-go { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--text); color: var(--bg); border-color: var(--text); }
-.pgc-go:disabled { background: var(--surface-2); color: var(--muted); border-color: var(--border); opacity: 1; }
+/* Every button is Ping Red, white text (owner, 2026-11-22). The family red is captured once here at the root, so the panels and tabs that remap
+   --accent to ink further down do not turn their buttons ink. Selected or pressed is the deep red with a white ring so it still reads as "on";
+   disabled is neutral grey, not a faded red. Selection cards (door and tool tiles) and link-style buttons keep their own look: white text on a
+   full red card would hide their descriptions. Verdicts are never red: a refusal stays amber with a lock and the word. */
+:root { --btn-bg: var(--accent-gradient); --btn-deep: var(--accent-deep); --btn-edge: var(--primary-edge); --btn-on: var(--on-accent); --btn-off: var(--accent-inactive-gradient); --btn-off-edge: var(--accent-inactive); }
+button:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn), .pgc-go { background: var(--btn-bg); color: var(--btn-on); border-color: var(--btn-edge); }
+.pgc-go { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+button[aria-pressed="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn), button[aria-selected="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn) { background: var(--btn-deep); color: var(--btn-on); border-color: var(--btn-on); box-shadow: inset 0 0 0 2px var(--btn-on); }
+button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn), .pgc-go:disabled { background: var(--btn-off); color: var(--btn-on); border-color: var(--btn-off-edge); opacity: 1; box-shadow: none; }
 
 /* ---- page layout ------------------------------------------------------------------------------------------------------------------- */
 .pgc-layout { display: grid; grid-template-columns: minmax(16rem, 21rem) minmax(0, 1fr); gap: 1rem; margin-top: 1rem; align-items: start; }
@@ -198,7 +204,6 @@ html { -webkit-text-size-adjust: 100%; font-size: var(--fs, 16px); }
 .pgc-dock__btns { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .pgc-dock__btns button { display: inline-flex; align-items: center; gap: 6px; }
 .pgc-dock__btns button svg { width: 16px; height: 16px; }
-.pgc-dock__btns button[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
 /* N11: a short window (200% zoom is about 450px tall) gets a compact dock, so the panels keep their room. */
 @media (max-height: 520px) and (min-width: 601px) {
   .pgc-dock { padding: 4px 16px; gap: 0.2rem 0.6rem; } .pgc-dock__lbl { display: none; }
