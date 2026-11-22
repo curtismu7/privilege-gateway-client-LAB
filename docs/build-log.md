@@ -222,3 +222,7 @@ Decisions for the owner:
 ## 2026-11-22, fix pass after the step 2 and step 3 reviews
 
 Two independent reviewers (requirements and honesty; break-it) reviewed 91de5f6; the Diagram work landed after. Every finding, what was done, the test that fails without it and what was skipped are in `docs/fix-pass-step2.md`. Summary: B1 a failed run clears the previous one on every surface; B2 and B3 the page's own tabs get the same amber and ink look as the dialogs (no red on a refusal, a held call or a `note` row); B4 the UI-pattern checker is clean through the documented `ui-pattern: allow P9` escape and one markup change; owner change: `demoAdmin` is a normal user; N1 to N11 fixed (N11 in part); N12 and the vendored-code issues are listed in `docs/upstream/README.md`. Earlier sentences in this log that say "no red inside a panel", that `demoAdmin` is an admin persona, or that the page is not framed are superseded by that note.
+
+## 2026-11-22: catalog id moved from D143 to D144
+
+`ciba-approval-sequence-LAB` already holds D143 (its content pack and shelf entry), so this lab takes D144 (owner decision). Changed in `scripts/build-content-pack.mjs` (then `content-pack.json` was regenerated), `docs/shelf-entry.json` and its test. The older D143 lines above are history. D144 is provisional: no catalog row exists for it yet.

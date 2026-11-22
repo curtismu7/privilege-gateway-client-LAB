@@ -19,8 +19,8 @@ export function buildPack() {
     id: APP_ID,
     title: APP_NAME,
     version,
-    // catalog D143 is provisional (build plan 2026-11-21); no catalog row truly matches yet.
-    demo: { id: APP_ID, name: APP_NAME, catalog: 'D143', baseUrl: `http://localhost:${PORT}`, doctor: '/api/health', tags: ['pingone-privilege', 'agent-gateway', 'ai-agent-security', 'mcp', 'agent-controls', 'simulated', 'real'] },
+    // catalog D144 is provisional (owner, 2026-11-22: D143 belongs to ciba-approval-sequence-LAB); no catalog row truly matches yet.
+    demo: { id: APP_ID, name: APP_NAME, catalog: 'D144', baseUrl: `http://localhost:${PORT}`, doctor: '/api/health', tags: ['pingone-privilege', 'agent-gateway', 'ai-agent-security', 'mcp', 'agent-controls', 'simulated', 'real'] },
     glossary: [
       { id: 'door', term: 'Door', definition: 'A standing MCP endpoint on a Privilege gateway. A caller picks a door, lists its tools and calls one. This lab ships three: one that permits every tool, one that permits some, and one that refuses every caller.', aliases: ['MCP door'] },
       { id: 'agent-access-key', term: 'Agent access key', definition: 'The credential an agent presents to a door. In Real mode the lab reads one per door from its own .env; it is write-only and never shown, logged or traced.', aliases: ['agent key'] },

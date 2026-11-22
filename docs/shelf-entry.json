@@ -10,8 +10,8 @@
       "composeFile": "privilege-gateway-client-LAB/docker-compose.yml",
       "composeOverlays": [],
       "pingProducts": [],
-      "catalogId": "D143",
-      "notes": "Host-run: ./scripts/run.sh (port 7833). Mock needs no tenant and no credentials. Docker: docker compose up --build -d (published on 127.0.0.1 only). Real (owner-run) reads PGC_* settings from this lab's own .env. The repo is not assigned yet. The catalog id D143 is the owner's choice (2026-11-22); the content pack already uses it.",
+      "catalogId": "D144",
+      "notes": "Host-run: ./scripts/run.sh (port 7833). Mock needs no tenant and no credentials. Docker: docker compose up --build -d (published on 127.0.0.1 only). Real (owner-run) reads PGC_* settings from this lab's own .env. The repo is not assigned yet. The catalog id D144 is the owner's choice (2026-11-22, moved from D143, which ciba-approval-sequence-LAB holds); the content pack uses the same one.",
       "tags": [
         "pingone-privilege",
         "agent-gateway",

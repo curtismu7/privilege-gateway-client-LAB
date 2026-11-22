@@ -6,7 +6,7 @@
   "demo": {
     "id": "privilege-gateway-client",
     "name": "Privilege Gateway Client Lab",
-    "catalog": "D143",
+    "catalog": "D144",
     "baseUrl": "http://localhost:7833",
     "doctor": "/api/health",
     "tags": [
