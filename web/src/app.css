@@ -116,6 +116,8 @@ html { -webkit-text-size-adjust: 100%; font-size: var(--fs, 16px); }
 .pgc-panel { padding: 1rem; min-width: 0; }
 .pgc-lbl { display: block; margin: 0 0 0.3rem; font-weight: 700; color: var(--text); }
 .pgc-filter { width: 100%; max-width: 28rem; }
+.pgc-byname { margin: 0.75rem 0; }
+.pgc-byname__row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .pgc-count { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.3rem 1rem; margin: 0.6rem 0; color: var(--text-body); font-size: 0.85rem; min-width: 0; overflow-wrap: anywhere; }
 .pgc-count > span { min-width: 0; }
 .pgc-permsum { display: inline-flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; font-weight: 600; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }

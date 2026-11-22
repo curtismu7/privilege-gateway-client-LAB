@@ -20,18 +20,18 @@ test('every outcome maps to one verdict in each source (the Mock-only held aside
   assert.deepEqual(Object.keys(expect).sort(), [...OUTCOMES].sort());
   for (const [outcome, id] of Object.entries(expect)) {
     assert.equal(mock({ outcome, status: 403, tools: { total: 18, permitted: 7 } }).id, id, `mock ${outcome}`);
-    if (outcome !== 'held') assert.equal(real({ outcome, status: 403, tools: { total: 18, permitted: null } }).id, id, `real ${outcome}`);
+    if (outcome !== 'held') assert.equal(real({ outcome, status: 403, tools: { total: 18 } }).id, id, `real ${outcome}`);
   }
 });
 
 test('Mock sentences: discovery counts, refusal, no-policy door, key problems, hold, upstream', () => {
-  const some = mock({ action: 'discover', outcome: 'ok', tools: { total: 18, permitted: 7 } });
-  assert.equal(some.sentence, '18 tools were discovered on demo-some-tools: 7 permitted, 11 not permitted for aidemo.');
+  const some = mock({ action: 'discover', outcome: 'ok', tools: { total: 7 } });
+  assert.equal(some.sentence, 'The simulated gateway listed 7 tools on demo-some-tools for aidemo. It lists only the tools the grant allows, so a tool that is not in the list is refused with 403 when it is called.');
   assert.equal(some.basis, 'checked');
-  const all = mock({ action: 'discover', door: 'demo-all-tools', outcome: 'ok', tools: { total: 18, permitted: 18 } });
-  assert.equal(all.sentence, '18 tools are in the grant of aidemo on demo-all-tools, and all 18 are permitted.');
+  const all = mock({ action: 'discover', door: 'demo-all-tools', outcome: 'ok', tools: { total: 18 } });
+  assert.match(all.sentence, /^The simulated gateway listed 18 tools on demo-all-tools for aidemo\./);
   const refused = mock({ outcome: 'policy', status: 403, policy: 'demo-some-tools' });
-  assert.match(refused.sentence, /sensitive_tax_record is listed but is not in the grant for aidemo on demo-some-tools/);
+  assert.match(refused.sentence, /sensitive_tax_record is not in the grant for aidemo on demo-some-tools/);
   assert.match(refused.sentence, /403 before it reached the backend/);
   assert.match(refused.sentence, /policy working as designed/);
   const none = mock({ action: 'discover', door: 'demo-blocked', outcome: 'policy', status: 403, policy: null });
@@ -51,7 +51,7 @@ test('Mock sentences: discovery counts, refusal, no-policy door, key problems, h
 test('Real never says "checked": it says observed and inferred, and a Real verdict is never simulated', () => {
   for (const outcome of ['ok', 'key', 'policy', 'upstream', 'rpc-error', 'tool-error', 'unusable']) {
     for (const action of ['discover', 'call']) {
-      const v = real({ action, outcome, status: outcome === 'key' ? 401 : outcome === 'policy' ? 403 : outcome === 'upstream' ? 502 : 200, tools: { total: 5, permitted: null } });
+      const v = real({ action, outcome, status: outcome === 'key' ? 401 : outcome === 'policy' ? 403 : outcome === 'upstream' ? 502 : 200, tools: { total: 5 } });
       assert.notEqual(v.basis, 'checked', `${action} ${outcome}`);
       assert.equal(v.simulated, false);
       assert.equal(v.source, 'real');
@@ -62,9 +62,9 @@ test('Real never says "checked": it says observed and inferred, and a Real verdi
   assert.equal(blocked.basis, 'inferred');
   assert.match(blocked.sentence, /answered 403 \(observed\)/);
   assert.match(blocked.sentence, /inferred from that status; the reply does not say which check refused/);
-  const ok = real({ action: 'discover', outcome: 'ok', status: 200, tools: { total: 18, permitted: null } });
+  const ok = real({ action: 'discover', outcome: 'ok', status: 200, tools: { total: 18 } });
   assert.match(ok.sentence, /listed 18 tools/);
-  assert.match(ok.sentence, /only known when one is called/);
+  assert.match(ok.sentence, /does not say whether the list holds only the tools this key may run/);
   assert.doesNotMatch(ok.sentence, /permitted,/, 'Real does not claim a permitted count it cannot know');
   assert.match(real({ outcome: 'key', status: 401 }).sentence, /answered 401 \(observed\).*did not accept the agent key.*does not say which check failed/);
   assert.throws(() => verdictFor({ source: 'real', ...base, outcome: 'held' }, realId()), /held/, 'a Real held outcome has no sentence: it is Mock-only');

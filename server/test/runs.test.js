@@ -34,14 +34,14 @@ function assertHopsAreSound(r) {
   assert.equal(r.hops.some((h) => h.kind === 'verdict'), true);
 }
 
-test('demo-all-tools: Allowed, 18 tools all permitted, one ordered hop array through the actors', async () => {
+test('demo-all-tools: Allowed, 18 tools listed, one ordered hop array through the actors', async () => {
   const r = await discover('demo-all-tools');
   assert.equal(r.source, 'mock');
   assert.equal(r.simulated, true);
   assert.equal(r.verdict.id, 'allowed');
   assert.equal(r.verdict.word, 'Allowed');
   assert.equal(r.tools.length, 18);
-  assert.ok(r.tools.every((t) => t.permitted === true));
+  assert.ok(r.tools.every((t) => t.permitted === undefined), 'a listed tool carries no permitted mark');
   assert.deepEqual(r.tools.map((t) => t.name), TOOLS.map((t) => t.name));
   assert.ok(r.tools.every((t) => t.description && typeof t.args === 'object'));
   assert.deepEqual(kinds(r), ['door-picked:ok', 'discover:ok', 'token-exchange:ok', 'gateway-check:ok', 'tools-list:ok', 'policy-check:ok', 'verdict:ok']);
@@ -65,15 +65,13 @@ test('gateway-internal hops are labelled illustrative in Mock, carry a labelled 
   assert.equal(r.hops.filter((h) => !h.illustrative && /Illustrative/.test(h.narrative)).length, 0);
 });
 
-test('demo-some-tools: Allowed with 18 discovered, 7 permitted and 11 marked not permitted', async () => {
+test('demo-some-tools: Allowed with only the 7 granted tools listed, like the real gateway', async () => {
   const r = await discover('demo-some-tools');
   assert.equal(r.verdict.id, 'allowed');
-  assert.equal(r.tools.length, 18);
-  assert.equal(r.tools.filter((t) => t.permitted === true).length, 7);
-  const no = r.tools.filter((t) => t.permitted === false);
-  assert.equal(no.length, 11);
-  assert.ok(no.every((t) => t.reason && /not in the read-only grant/.test(t.reason)));
-  assert.match(r.verdict.sentence, /7 permitted, 11 not permitted/);
+  assert.equal(r.tools.length, 7);
+  assert.deepEqual(r.tools.map((t) => t.name), ['list_entitlements', 'who_has_role', 'get_access_grants', 'get_portfolio_summary', 'get_investment_accounts', 'get_investment_balance', 'get_investment_transactions']);
+  assert.ok(!r.tools.some((t) => t.name === 'open_ticket' || t.name.startsWith('sensitive_')), 'refused tools are not listed');
+  assert.match(r.verdict.sentence, /listed 7 tools/);
   assertHopsAreSound(r);
 });
 
@@ -96,7 +94,7 @@ test('a call outside the grant is Blocked by policy with a 403 and a tool-refuse
     const r = await call('demo-some-tools', tool);
     assert.equal(r.verdict.id, 'blocked', tool);
     assert.equal(r.verdict.status, 403);
-    assert.match(r.verdict.sentence, new RegExp(`${tool} is listed but is not in the grant for aidemo`));
+    assert.match(r.verdict.sentence, new RegExp(`${tool} is not in the grant for aidemo`));
     assert.ok(kinds(r).includes('tool-refused:deny'), tool);
     assert.equal(r.result, null);
     assertHopsAreSound(r);

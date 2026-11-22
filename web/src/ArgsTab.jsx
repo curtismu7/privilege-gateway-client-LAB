@@ -62,8 +62,7 @@ export default function ArgsTab({ lab, tool, onBack }) {
       <div className="pgc-args-top"><button type="button" onClick={onBack}>← All tools</button></div>
       <h2 className="pgc-tool-h" data-testid="args-tool">{visible(tool.name)}</h2>
       {tool.description && <p className="pgc-desc">{visible(tool.description)}</p>}
-      {mock && tool.write && tool.permitted !== false && <p className="pgc-note pgc-note--hold"><Icon name="hourglass" /> This changes data. The simulated gateway holds it until a person approves it, so Run ends as Held.</p>}
-      {tool.permitted === false && <p className="pgc-note pgc-note--hold" data-testid="args-refused"><Icon name="lock" /> Not permitted on this door: {visible(tool.reason ?? "not in the grant")}. Run it anyway to watch the gateway refuse it.</p>}
+      {mock && tool.write && <p className="pgc-note pgc-note--hold"><Icon name="hourglass" /> This changes data. The simulated gateway holds it until a person approves it, so Run ends as Held.</p>}
       <label className="pgc-lbl" htmlFor="pgc-args">Arguments (JSON)</label>
       <textarea id="pgc-args" className="pgc-args" spellCheck={false} value={text} onChange={(e) => lab.setArgs(tool.name, e.target.value)} aria-describedby="pgc-argnote" data-testid="args-text" />
       <p id="pgc-argnote" className={`pgc-note${chk.ok ? "" : " pgc-note--hold"}`} data-testid="args-note">{chk.msg}</p>

@@ -69,7 +69,7 @@ describe("verdict card model", () => {
     expect(cardFor({ busy: null, failure: { message: "m", code: "unreachable" }, lastRun: null, door: "d", info: info() })).toMatchObject({ id: "failure", sentence: "m" });
   });
 
-  test("actions: a refused call with a tool list offers a permitted tool; without one it retries; no-key offers to drop the scenario", () => {
+  test("actions: a refused call with a tool list offers a listed tool; without one it retries; no-key offers to drop the scenario", () => {
     expect(card(run("blocked")).actions.map((a) => a.id)).toEqual(["choose", "door"]);
     expect(card(run("blocked", { action: "discover" })).actions.map((a) => a.id)).toEqual(["repeat", "door"]);
     expect(card(run("needs-sign-in", { scenario: "no-key" })).actions[0].id).toBe("clear-scenario");

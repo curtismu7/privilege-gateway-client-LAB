@@ -90,6 +90,12 @@ def go(page, door, tool=None, scenario=None):
     wait_done(page)
     if tool is None:
         return
+    if page.locator(f'[data-testid="tool-{tool}"]').count() == 0:
+        # The gateway lists only what the grant allows, so a refused tool has no tile: run it by name.
+        page.fill('[data-testid="by-name-input"]', tool)
+        page.click('[data-testid="by-name-run"]')
+        wait_done(page)
+        return
     page.click(f'[data-testid="tool-{tool}"]')
     page.wait_for_selector('[data-testid="run"]')
     if scenario:

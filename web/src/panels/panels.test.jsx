@@ -31,9 +31,15 @@ async function runTool(door, tool, { text } = {}) {
   click(`door-${door}`);
   click("action-discover");
   await waitFor(() => expect(screen.queryByTestId("tool-grid")).not.toBeNull());
-  click(`tool-${tool}`);
-  if (text) fireEvent.change(document.getElementById("pgc-args"), { target: { value: text } });
-  click("run");
+  if (!screen.queryByTestId(`tool-${tool}`)) {
+    // The gateway lists only what the grant allows, so a refused tool has no tile: run it by name.
+    fireEvent.change(tid("by-name-input"), { target: { value: tool } });
+    click("by-name-run");
+  } else {
+    click(`tool-${tool}`);
+    if (text) fireEvent.change(document.getElementById("pgc-args"), { target: { value: text } });
+    click("run");
+  }
   await waitFor(() => expect(tid("verdict-card").dataset.verdict).not.toBe("working"));
 }
 const open = (id) => click(`dock-${id}`);

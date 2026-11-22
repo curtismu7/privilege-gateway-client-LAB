@@ -20,7 +20,7 @@ describe("the simulated agent reads the message", () => {
   });
 
   test("different messages never get one canned reply", () => {
-    const allowed = { verdict: { id: "allowed", word: "Allowed", sentence: "s", basis: "checked" }, tools: [{ name: "a", permitted: true }, { name: "b", permitted: false }] };
+    const allowed = { verdict: { id: "allowed", word: "Allowed", sentence: "s", basis: "checked" }, tools: [{ name: "a" }, { name: "b" }] };
     const blocked = { verdict: { id: "blocked", word: "Blocked by policy", sentence: "The tool is not in the grant.", basis: "checked" } };
     const ctx = (run) => ({ run, door: "demo-some-tools", name: "aidemo" });
     const a = replyFor({ intent: "list" }, ctx(allowed));
@@ -28,7 +28,7 @@ describe("the simulated agent reads the message", () => {
     const c = replyFor({ intent: "run", tool: "who_has_role" }, ctx({ verdict: { id: "allowed", word: "Allowed", sentence: "s" } }));
     const d = replyFor({ intent: "help" }, {});
     expect(new Set([a.text, b.text, c.text, d.text]).size).toBe(4);
-    expect(a.text).toMatch(/1 of 2 tools/);
+    expect(a.text).toMatch(/lists 2 tools on demo-some-tools for aidemo: a, b/);
     expect(a.chip).toEqual({ id: "allowed", word: "Allowed" });
     expect(b.text).toMatch(/refused/);
     expect(b.chip.word).toBe("Blocked by policy");
@@ -43,7 +43,7 @@ describe("the simulated agent reads the message", () => {
   });
 
   test("a long list is shortened with a count", () => {
-    const tools = Array.from({ length: 12 }, (_, i) => ({ name: `t${i}`, permitted: true }));
+    const tools = Array.from({ length: 12 }, (_, i) => ({ name: `t${i}` }));
     const r = replyFor({ intent: "list" }, { run: { verdict: { id: "allowed", word: "Allowed" }, tools }, door: "d", name: "n" });
     expect(r.text).toMatch(/and 4 more/);
   });

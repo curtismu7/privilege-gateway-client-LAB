@@ -5,16 +5,15 @@
   "mockOnly": false,
   "goal": "{{castAgentId}} at {{castBrand}} is given the standing door demo-all-tools and needs to know what it can do through it.",
   "obstacle": "An agent cannot guess a policy. It has to connect, discover the tools and try one before it knows whether the door is useful.",
-  "control": "The door's policy covers every tool, so discovery lists all 18 and each one is permitted. The verdict is Allowed, and the evidence shows who the gateway evaluated and why.",
-  "say": "This is the widest door: 18 tools discovered, 18 permitted. Everything here is simulated by the lab's own gateway, and the verdict says so.",
+  "control": "The door's policy covers every tool, so discovery lists all 18. The verdict is Allowed, and the evidence shows who the gateway evaluated and why.",
+  "say": "This is the widest door: 18 tools listed. Everything here is simulated by the lab's own gateway, and the verdict says so.",
   "run": {
     "action": "discover",
     "door": "demo-all-tools"
   },
   "expect": {
     "verdict": "allowed",
-    "total": 18,
-    "permitted": 18
+    "total": 18
   },
   "steps": [
     {
@@ -27,8 +26,8 @@
     {
       "n": 2,
       "title": "Discover the tools",
-      "tell": "Run discovery. The verdict reads Allowed and the tool list shows 18 tools, all permitted.",
-      "say": "Eighteen discovered, eighteen permitted for {{castAgentId}}.",
+      "tell": "Run discovery. The verdict reads Allowed and the tool list shows 18 tools.",
+      "say": "Eighteen tools listed for {{castAgentId}}.",
       "why": "Discovery is the first call a client makes. It already carries a decision.",
       "run": {
         "action": "discover",
@@ -36,8 +35,7 @@
       },
       "expect": {
         "verdict": "allowed",
-        "total": 18,
-        "permitted": 18
+        "total": 18
       }
     },
     {

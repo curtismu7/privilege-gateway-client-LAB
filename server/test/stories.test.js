@@ -96,7 +96,6 @@ test('every story and every step replays against the lab and produces the verdic
       assert.equal(rec.verdict.id, expect.verdict, `${where}: verdict ${rec.verdict.id}`);
       assert.equal(rec.source, 'mock');
       if (expect.total !== undefined) assert.equal(rec.tools.length, expect.total, `${where}: tools`);
-      if (expect.permitted !== undefined) assert.equal(rec.tools.filter((t) => t.permitted).length, expect.permitted, `${where}: permitted`);
       if (expect.mismatch) assert.equal(rec.identity.mismatch, true, `${where}: mismatch`);
       replayed += 1;
     }

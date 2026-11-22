@@ -75,10 +75,10 @@ describe("shell and layout", () => {
 });
 
 describe("verdicts", () => {
-  test("demo-all-tools: Allowed, 18 of 18 tools, none refused, the verdict names word, sentence, facts and basis", async () => {
+  test("demo-all-tools: Allowed, 18 of 18 tools listed, the verdict names word, sentence, facts and basis", async () => {
     await mount();
     await discover();
-    expect(tid("verdict-sentence")).toHaveTextContent(/18 tools .* all 18 are permitted/);
+    expect(tid("verdict-sentence")).toHaveTextContent(/listed 18 tools on demo-all-tools/);
     expect(tid("verdict-facts")).toHaveTextContent("Identity the gateway evaluated");
     expect(tid("verdict-facts")).toHaveTextContent("Checked by this lab's simulated gateway");
     expect(tid("verdict-card")).toHaveAttribute("data-tone", "ok");
@@ -86,34 +86,33 @@ describe("verdicts", () => {
     expect(document.querySelectorAll("[data-refused]")).toHaveLength(0);
   });
 
-  test("demo-some-tools: 7 permitted, 11 greyed with a lock tag and a reason; the filter narrows the list", async () => {
+  test("demo-some-tools: only the 7 granted tools are listed, as on the real gateway; the filter narrows the list", async () => {
     await mount();
     door("demo-some-tools");
     await discover();
-    expect(document.querySelectorAll("[data-refused]")).toHaveLength(11);
-    expect(document.querySelectorAll("[data-refused] .pgc-tag--lock")).toHaveLength(11);
-    expect(screen.getAllByText(/Not permitted/)).toHaveLength(11);
-    expect(document.querySelectorAll("[data-refused] .pgc-tool__why")).toHaveLength(11);
-    expect([...document.querySelectorAll("[data-refused] .pgc-tool__why")].every((e) => /not in the read-only grant/.test(e.textContent))).toBe(true);
-    expect(tid("perm-summary")).toHaveTextContent("7 permitted");
-    fireEvent.change(tid("tool-filter"), { target: { value: "sensitive_p" } });
-    expect(tid("tool-count")).toHaveTextContent("3 of 18 tools");
+    expect(tid("tool-count")).toHaveTextContent("7 of 7 tools listed");
+    expect(document.querySelectorAll("[data-refused]")).toHaveLength(0);
+    expect(screen.queryByText(/Not permitted/)).toBeNull();
+    expect(screen.queryByTestId("tool-sensitive_tax_record")).toBeNull();
+    expect(tid("perm-summary")).toHaveTextContent(/lists only what the grant allows/);
+    fireEvent.change(tid("tool-filter"), { target: { value: "get_investment" } });
+    expect(tid("tool-count")).toHaveTextContent("3 of 7 tools");
     fireEvent.change(tid("tool-filter"), { target: { value: "zzz" } });
     expect(tid("tools-nomatch")).toHaveTextContent("No tools match");
   });
 
-  test("a single refused tool is Blocked by policy in amber with the word, and the door's list stays", async () => {
+  test("a tool the list left out, run by name, is Blocked by policy in amber with the word, and the door's list stays", async () => {
     await mount();
     door("demo-some-tools");
     await discover();
-    click("tool-sensitive_tax_record");
-    expect(tid("args-refused")).toHaveTextContent(/Not permitted on this door/);
-    click("run");
+    expect(tid("by-name-run")).toBeDisabled();
+    fireEvent.change(tid("by-name-input"), { target: { value: "sensitive_tax_record" } });
+    click("by-name-run");
     await waitWord("Blocked by policy");
     expect(tid("verdict-card")).toHaveAttribute("data-tone", "hold");
     expect(tid("verdict-card").querySelector("svg")).not.toBeNull();
     click("tab-tools");
-    expect(tid("tool-count")).toHaveTextContent("18 of 18 tools");
+    expect(tid("tool-count")).toHaveTextContent("7 of 7 tools");
   });
 
   test("demo-blocked: Blocked by policy before any tool is listed, and the empty state says so", async () => {
@@ -248,7 +247,6 @@ describe("tools tab states", () => {
         "/api/discover": async (b, lab) => {
           const run = await lab.discover({ door: b.door }, {});
           run.tools[0] = { ...run.tools[0], name: longName, description: hostile, args: { [`arg_${"x".repeat(80)}`]: "v" } };
-          run.tools[1] = { ...run.tools[1], permitted: false, reason: hostile };
           return run;
         },
       },
@@ -278,8 +276,8 @@ describe("agent chat", () => {
       return replies[replies.length - 1].textContent;
     };
     const list = await say("list my tools");
-    expect(list).toMatch(/7 of 18 tools/);
-    expect(list).toMatch(/refuses the other 11/);
+    expect(list).toMatch(/lists 7 tools on demo-some-tools/);
+    expect(list).toMatch(/not listed is refused when called/);
     const balance = await say("get investment balance");
     expect(balance).toMatch(/get_investment_balance/);
     expect(balance).toMatch(/allowed/i);
@@ -292,7 +290,7 @@ describe("agent chat", () => {
     expect(new Set([list, balance, refused, help, typo]).size).toBe(5);
     // the one refused tool did not put the door into a blocked state
     click("tab-tools");
-    expect(tid("tool-count")).toHaveTextContent("18 of 18 tools");
+    expect(tid("tool-count")).toHaveTextContent("7 of 7 tools");
   });
 
   test("on a blocked door the agent says it was blocked", async () => {

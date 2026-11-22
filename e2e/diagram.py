@@ -69,6 +69,12 @@ def run_tool(page, door, tool, args_text=None, scenario=None):
     pick_door(page, door)
     page.click('[data-testid="get-tools"]')
     page.wait_for_selector('[data-testid="tool-grid"]')
+    if page.locator(f'[data-testid="tool-{tool}"]').count() == 0:
+        # The gateway lists only what the grant allows, so a refused tool has no tile: run it by name.
+        page.fill('[data-testid="by-name-input"]', tool)
+        page.click('[data-testid="by-name-run"]')
+        page.wait_for_function("document.querySelector('[data-testid=verdict-card]')?.dataset.verdict !== 'working'")
+        return
     page.click(f'[data-testid="tool-{tool}"]')
     page.wait_for_selector('[data-testid="run"]')
     if args_text is not None:

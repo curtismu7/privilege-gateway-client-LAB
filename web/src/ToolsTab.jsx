@@ -54,43 +54,59 @@ function EmptyState({ lab, onDiscover }) {
   return <Empty icon="alert" title="No tools: the gateway answered with an error"><p>{visible(v.sentence)}</p></Empty>;
 }
 
-export default function ToolsTab({ lab, onPick, filterRef, onDiscover }) {
+const NAME_OK = /^[A-Za-z0-9_.-]{1,64}$/;
+
+// A tool the list does not show can still be called: the gateway, not the list, decides. Arguments are empty, so only the gateway's own answer is seen.
+function ByName({ lab, onRunByName }) {
+  const [text, setText] = useState("");
+  const name = text.trim();
+  const ok = NAME_OK.test(name);
+  const working = Boolean(lab.busy);
+  return (
+    <form className="pgc-byname" data-testid="by-name" onSubmit={(e) => { e.preventDefault(); if (ok && !working) onRunByName(name); }}>
+      <label className="pgc-lbl" htmlFor="pgc-byname">Run a tool by name</label>
+      <div className="pgc-byname__row">
+        <input id="pgc-byname" className="pgc-filter" type="text" placeholder="A tool name, listed or not" autoComplete="off" spellCheck={false} maxLength={64} value={text} onChange={(e) => setText(e.target.value)} aria-describedby="pgc-byname-note" data-testid="by-name-input" />
+        <button type="submit" className="pgc-go" disabled={!ok || working} data-testid="by-name-run">Run</button>
+      </div>
+      <p id="pgc-byname-note" className="pgc-note" data-testid="by-name-note">{name && !ok ? "Use letters, digits, dot, dash and underscore, up to 64 characters." : "Sends the call with no arguments, so the gateway's decision is what you see."}</p>
+    </form>
+  );
+}
+
+export default function ToolsTab({ lab, onPick, filterRef, onDiscover, onRunByName }) {
   const [filter, setFilter] = useState("");
   const tools = lab.hasTools ? lab.discovery.tools : null;
   const mock = lab.info.source === "mock";
   const rows = useMemo(() => (tools ?? []).filter((t) => String(t.name).toLowerCase().includes(filter.trim().toLowerCase())), [tools, filter]);
   if (!tools || tools.length === 0) return <EmptyState lab={lab} onDiscover={onDiscover} />;
-  const permitted = tools.filter((t) => t.permitted === true).length;
-  const refused = tools.filter((t) => t.permitted === false).length;
   const name = lab.identity?.name;
   return (
     <div data-testid="tools-panel">
       <label className="pgc-lbl" htmlFor="pgc-filter">Filter tools</label>
       <input id="pgc-filter" ref={filterRef} className="pgc-filter" type="search" placeholder="Filter tools..." autoComplete="off" value={filter} onChange={(e) => setFilter(e.target.value)} data-testid="tool-filter" />
       <div className="pgc-count">
-        <span data-testid="tool-count">{rows.length} of {tools.length} tools</span>
-        {mock ? (
-          <span className="pgc-permsum" data-testid="perm-summary">
-            <span>{permitted} permitted</span>{refused > 0 && <span>{refused} not permitted</span>}<span>for {visible(name ?? "the caller")}</span>
-          </span>
-        ) : <span className="pgc-permsum" data-testid="perm-summary"><span>This lab cannot tell which of these the key may run. Run one to find out (inferred from the answer).</span></span>}
+        <span data-testid="tool-count">{rows.length} of {tools.length} tools listed</span>
+        <span className="pgc-permsum" data-testid="perm-summary">
+          {mock
+            ? <span>The gateway lists only what the grant allows for {visible(name ?? "the caller")}. A tool that is not listed is refused when called.</span>
+            : <span>The reply does not say which tools the key may run. Run one to find out (inferred from the answer).</span>}
+        </span>
       </div>
+      <ByName lab={lab} onRunByName={onRunByName} />
       {rows.length === 0 ? (
         <p className="pgc-hint" data-testid="tools-nomatch">No tools match “{visible(filter)}”.</p>
       ) : (
         <ul className="pgc-tool-grid" data-testid="tool-grid">
           {rows.map((t) => {
             const n = Object.keys(t.args ?? {}).length;
-            const no = t.permitted === false;
             return (
               <li key={t.name}>
-                <button type="button" className="pgc-tool" data-refused={no || undefined} aria-pressed={lab.selectedTool === t.name} data-testid={`tool-${t.name}`} onClick={() => onPick(t.name)}>
+                <button type="button" className="pgc-tool" aria-pressed={lab.selectedTool === t.name} data-testid={`tool-${t.name}`} onClick={() => onPick(t.name)}>
                   <span className="pgc-tool__name"><Wrapped text={t.name} /></span>
                   <span className="pgc-tool__params">{n} param{n === 1 ? "" : "s"}</span>
                   {t.description && <span className="pgc-tool__desc">{visible(t.description)}</span>}
-                  {no && <span className="pgc-tag pgc-tag--lock"><Icon name="lock" />Not permitted</span>}
-                  {no && t.reason && <span className="pgc-tool__why">{visible(t.reason)}</span>}
-                  {mock && !no && t.write && <span className="pgc-tag"><Icon name="hourglass" />Needs approval</span>}
+                  {mock && t.write && <span className="pgc-tag"><Icon name="hourglass" />Needs approval</span>}
                 </button>
               </li>
             );

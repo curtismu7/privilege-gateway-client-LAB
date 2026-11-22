@@ -269,7 +269,7 @@ export default function App() {
           <StoryPanel stories={content.stories} info={lab.info} lastRun={lab.lastRun} activeId={activeStory} onSelect={selectStory} onRun={runStory} busy={lab.busy}
             error={content.error} urlNote={urlNote} vertical={content.customer?.verticals.find((v) => v.id === content.vertical)?.label} />
           <Tabs tab={tab} onTab={setTab} look={runLook(lab.lastRun)}>
-            <Panel id="tools" tab={tab}><ToolsTab lab={lab} onPick={pick} filterRef={filterRef} onDiscover={() => lab.discover()} /></Panel>
+            <Panel id="tools" tab={tab}><ToolsTab lab={lab} onPick={pick} filterRef={filterRef} onDiscover={() => lab.discover()} onRunByName={(n) => lab.callTool(n, {})} /></Panel>
             <Panel id="args" tab={tab}><ArgsTab lab={lab} tool={selected} onBack={() => setTab("tools")} /></Panel>
             <Panel id="evidence" tab={tab}><EvidenceTab lab={lab} /></Panel>
             <Panel id="chat" tab={tab}><ChatTab key={`${source}:${lab.door}`} lab={lab} /></Panel>

@@ -43,10 +43,8 @@ export function replyFor(plan, { run, door, name }) {
   const who = name || "the caller";
   if (plan.intent === "list") {
     if (v.id !== "allowed" || !run.tools) return { text: `I could not list the tools on ${door}. ${v.sentence}`, chip: chipFor(v) };
-    const ok = run.tools.filter((t) => t.permitted === true);
-    const no = run.tools.length - ok.length;
     return {
-      text: `On ${door} ${who} can use ${ok.length} of ${run.tools.length} tools: ${shortList(ok.map((t) => t.name)) || "none"}.${no ? ` The gateway refuses the other ${no} (write and sensitive tools).` : ""}`,
+      text: `The gateway lists ${run.tools.length} tool${run.tools.length === 1 ? "" : "s"} on ${door} for ${who}: ${shortList(run.tools.map((t) => t.name)) || "none"}. A tool that is not listed is refused when called.`,
       chip: chipFor(v),
     };
   }
