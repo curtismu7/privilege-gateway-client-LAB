@@ -4,13 +4,14 @@ import { startLab, postJson, startStubGateway, realEnv, TEST_KEYS } from './help
 import { formFromSchema, modelToolFrom, cleanSchema } from '../src/toolSchema.js';
 import { agentConfig, checkHistory, AGENT_LIMITS, DEFAULT_AGENT_MODEL } from '../src/agentChat.js';
 import { decideModel, MODEL_ORIGIN } from '../src/netguard.js';
+import { TOOLS } from '../src/doors.js';
 
 // "The real gateway" is a loopback stub and "the model" is a stub fetch: nothing here touches a network.
 const ALL = 'demo-all-tools';
 const API_KEY = 'TESTONLY-anthropic-key-0004-abcdef';
 const AGENT_ENV = { PGC_ANTHROPIC_API_KEY: API_KEY };
-// The real backend's schema for get_access_grants takes `resource`; the Mock sample says `principal`.
-const REAL_GRANTS = { type: 'object', properties: { resource: { type: 'string', description: 'Resource name, e.g. "prod-db-primary"' } }, required: ['resource'] };
+// The listed schema for get_access_grants, with an example value the Mock sample does not use, so a form built from it is told apart.
+const REAL_GRANTS = { type: 'object', properties: { resource: { type: 'string', description: 'Resource name, e.g. "billing-db"' } }, required: ['resource'] };
 const realSchemas = (tools) => tools.map((t) => (t.name === 'get_access_grants' ? { ...t, description: 'List every grant on one resource.', inputSchema: REAL_GRANTS } : t));
 
 // A stub of the Messages API. `replies` is a list of bodies (or functions of the request) served in order; every request is recorded.
@@ -51,9 +52,8 @@ test('Real discovery builds each tool form from the listed schema, not the Mock 
   try {
     const { body: r } = await post('/api/discover', { door: ALL });
     const grants = r.tools.find((t) => t.name === 'get_access_grants');
-    assert.deepEqual(grants.args, { resource: 'prod-db-primary' }, 'the e.g. value from the real description, under the real name');
+    assert.deepEqual(grants.args, { resource: 'billing-db' }, 'the e.g. value from the listed schema, not the Mock sample');
     assert.deepEqual(grants.required, ['resource']);
-    assert.ok(!('principal' in grants.args), 'the Mock argument name is gone in Real');
     assert.deepEqual(grants.inputSchema, REAL_GRANTS);
   } finally { await stop(); }
 });
@@ -63,8 +63,9 @@ test('Mock discovery is unchanged: the Mock samples and no schema on the record'
   try {
     const r = await (await postJson(l.base, '/api/discover', { door: ALL })).json();
     const grants = r.tools.find((t) => t.name === 'get_access_grants');
-    assert.deepEqual(grants.args, { principal: 'aidemo' });
-    assert.deepEqual(grants.required, ['principal']);
+    const sample = TOOLS.find((t) => t.name === 'get_access_grants');
+    assert.deepEqual(grants.args, sample.args, 'the Mock catalog sample');
+    assert.deepEqual(grants.required, sample.required);
     assert.equal(grants.inputSchema, undefined);
   } finally { await l.close(); }
 });
