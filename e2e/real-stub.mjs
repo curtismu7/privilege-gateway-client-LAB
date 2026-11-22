@@ -48,7 +48,8 @@ function stubPingOne() {
   };
 }
 
-const stub = await startStubGateway({ keys: TEST_KEYS });
+// STUB_FAIL=502 makes every answer of the stub gateway that status (a Real upstream failure), for the browser proof of the 'failed' look.
+const stub = await startStubGateway({ keys: TEST_KEYS, fail: Number(process.env.STUB_FAIL) || 0 });
 const { app, health } = createApp({ env: { ...realEnv(stub.origin, { MODE: process.env.MODE_START || 'real' }), ...loginEnv }, fetchImpl: stubPingOne() });
 const { url } = await startHttpServer({ port: PORT, host: '127.0.0.1', app });
 console.log(`real-stub lab at ${url} (Real against a loopback STUB gateway${WITH_LOGIN ? ' and a STUB PingOne; the stub user password is "' + STUB_PASSWORD + '"' : ', page login not configured'})`);

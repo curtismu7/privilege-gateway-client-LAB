@@ -234,6 +234,13 @@ html { -webkit-text-size-adjust: 100%; font-size: var(--fs, 16px); }
   content: ""; display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -1px; background: currentColor;
   -webkit-mask: var(--pgc-lock) center / contain no-repeat; mask: var(--pgc-lock) center / contain no-repeat;
 }
+/* The 'error' verdict (demo-hop/1, added to the shared hop-detail upstream): a hop that could not complete reads "failed", never "denied". The shared evidence.css styles the
+   deny and held verdicts only, so the same rules are written for error here (a drawn dash on the sequence line, the word coloured with
+   --danger-text). --danger-text is amber everywhere except a Real upstream failure (.pgc-fd--red, .pgc-calm--red), so a failure is amber with the
+   word in Mock and the standard's red only in Real. No lock: the lock marks a refusal. */
+.pgc-fd .rl-f[data-verdict="error"] .rl-f__st { color: var(--danger-text); }
+.pgc-fd .sq-row[data-verdict="error"] .sq-msg { stroke-dasharray: 2 3; }
+.pgc-fd .sq-row[data-verdict="error"] .sq-al { fill: var(--danger-text); font-weight: 700; }
 .pgc-fd .fd-title svg { width: 18px; height: 18px; flex: none; }
 
 .pgc-pane { display: grid; gap: 0.75rem; min-width: 0; color: var(--text-body); }

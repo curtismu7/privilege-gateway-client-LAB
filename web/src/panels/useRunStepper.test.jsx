@@ -22,16 +22,16 @@ describe("planRun: where Simulate stops", () => {
     const r = await call("open_ticket", {}, "demo-some-tools");
     const p = planRun(r.hops, r.verdict.id);
     expect(r.verdict.id).toBe("blocked");
-    expect(p.stopHop).toMatchObject({ kind: "authorize-decision", verdict: "deny" });
+    expect(p.stopHop).toMatchObject({ kind: "policy-check", verdict: "deny" });
     expect(p.stopsEarly).toBe(true);
   });
   test("a blocked door stops at its Privilege decision", async () => {
     const r = await api("/api/discover", { method: "POST", body: { door: "demo-blocked" } });
-    expect(planRun(r.hops, r.verdict.id).stopHop).toMatchObject({ kind: "authorize-decision" });
+    expect(planRun(r.hops, r.verdict.id).stopHop).toMatchObject({ kind: "policy-check" });
   });
   test("an upstream error stops at the tool hop", async () => {
     const r = await call("list_entitlements", { scenario: "upstream-error" });
-    expect(planRun(r.hops, r.verdict.id).stopHop).toMatchObject({ kind: "tool-dispatched", verdict: "deny" });
+    expect(planRun(r.hops, r.verdict.id).stopHop).toMatchObject({ kind: "tool-dispatched", verdict: "error" });
   });
   test("a held call stops waiting on the human", async () => {
     const r = await call("open_ticket");

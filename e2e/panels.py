@@ -277,10 +277,10 @@ def scenario_checks(browser, theme):
         page.wait_for_function(f"document.querySelector('[data-testid=\"panel-{pid}\"] [data-testid=\"step-toggle\"]').textContent.trim() === 'Replay'", timeout=15000)
 
     cases = [
-        ("blocked", dict(door="demo-some-tools", tool="sensitive_tax_record"), "blocked", "Authorize", "denied"),
+        ("blocked", dict(door="demo-some-tools", tool="sensitive_tax_record"), "blocked", "Policy decision", "denied"),
         ("held", dict(door="demo-all-tools", tool="open_ticket"), "held", "Held", "held"),
-        ("upstream", dict(door="demo-all-tools", tool="list_entitlements", scenario="upstream-error"), "upstream", "Tool", "denied"),
-        ("mismatch", dict(door="demo-all-tools", tool="list_entitlements", scenario="identity-mismatch"), "allowed", "Reply", "done"),
+        ("upstream", dict(door="demo-all-tools", tool="list_entitlements", scenario="upstream-error"), "upstream", "Tool", "failed"),
+        ("mismatch", dict(door="demo-all-tools", tool="list_entitlements", scenario="identity-mismatch"), "allowed", "Verdict", "done"),
     ]
     for name, kw, verdict, stop_title, status_word in cases:
         close_all(page)
@@ -303,6 +303,10 @@ def scenario_checks(browser, theme):
         if name == "upstream":
             st = page.evaluate("""() => { const e = document.querySelector('[data-testid=panel-reel] .rl-f[aria-current=step] .rl-f__st'); return getComputedStyle(e, '::before').content; }""")
             check(f"{T} upstream: an upstream failure carries no lock (it is not a refusal)", st in ("none", "normal"), str(st))
+            fr = page.evaluate("""() => { const f = document.querySelector('[data-testid=panel-reel] .rl-f[aria-current=step]'); const e = f.querySelector('.rl-f__st'); return {verdict: f.getAttribute('data-verdict'), color: getComputedStyle(e).color, any_deny: !!document.querySelector('[data-testid=panel-reel] .rl-f[data-verdict=deny]')}; }""")
+            check(f"{T} upstream: the failed frame is verdict error, says failed (never denied) and is amber in Mock, not red", fr["verdict"] == "error" and fr["color"] == amber and not fr["any_deny"], f"{fr} amber {amber}")
+            tag = page.evaluate("""() => { const e = document.querySelector('[data-testid=panel-reel] [data-testid=sdp-status]'); return e ? [getComputedStyle(e).color, e.textContent.trim()] : null; }""")
+            check(f"{T} upstream: the step-detail tag says failed, in amber", tag and tag[1] == "failed" and tag[0] == amber, str(tag))
         if name == "mismatch":
             ids = text(page, '[data-testid="run-note-identities"]') or ""
             check(f"{T} mismatch: both identities shown, labelled simulated", "SIMULATED" in ids and "aidemo" in ids, ids)
@@ -327,7 +331,7 @@ def scenario_checks(browser, theme):
     run_tool(page, "demo-all-tools", "list_entitlements", scenario="no-key")
     check(f"{T} no-key: needs sign-in", page.get_attribute('[data-testid="verdict-card"]', "data-verdict") == "needs-sign-in")
     play_to_stop("reel")
-    check(f"{T} no-key: stops at the Privilege decision", ", Authorize," in page.query_selector('[data-testid="panel-reel"] .rl-f[aria-current="step"]').get_attribute("aria-label"))
+    check(f"{T} no-key: stops at the Privilege decision", ", Policy decision," in page.query_selector('[data-testid="panel-reel"] .rl-f[aria-current="step"]').get_attribute("aria-label"))
     check(f"{T} no-key: not red", page.evaluate(RED_SCAN, '[data-testid="panel-reel"]') == [])
     close_all(page)
 

@@ -7,17 +7,17 @@ import { initial, reduce, speedMs, SPEEDS } from "./stepper.js";
 const EMPTY = [];
 
 // Where Simulate stops. A run that was refused, held or failed ends at the hop where it ended; Next goes on to the rest (the reply).
-//   upstream error: the tool hop that failed        held: the hop that waits for the human        refused / needs sign-in / bad request: the
+//   upstream error: the tool hop that failed (verdict error; a failure before the tool leg stops at the first failed hop)        held: the hop that waits for the human        refused / needs sign-in / bad request: the
 //   Privilege decision hop (or the first hop that failed)        anything else: the last hop.
 export function planRun(hops = EMPTY, verdictId = null) {
   const ran = (Array.isArray(hops) ? hops : EMPTY).filter((h) => h.verdict !== "skip");
   const last = (p) => { for (let i = ran.length - 1; i >= 0; i -= 1) if (p(ran[i])) return i; return -1; };
   const first = (p) => ran.findIndex(p);
   let at = -1;
-  if (verdictId === "upstream") at = last((h) => h.kind === "tool-dispatched" && h.verdict === "deny");
+  if (verdictId === "upstream") at = last((h) => h.kind === "tool-dispatched" && h.verdict === "error");
   else if (verdictId === "held") at = last((h) => h.verdict === "held");
-  else if (verdictId === "blocked" || verdictId === "needs-sign-in" || verdictId === "bad-request") at = first((h) => h.kind === "authorize-decision" && h.verdict === "deny");
-  if (at < 0 && verdictId !== "allowed") at = first((h) => h.verdict === "deny" || h.verdict === "held");
+  else if (verdictId === "blocked" || verdictId === "needs-sign-in" || verdictId === "bad-request") at = first((h) => h.kind === "policy-check" && h.verdict === "deny");
+  if (at < 0 && verdictId !== "allowed") at = first((h) => h.verdict === "deny" || h.verdict === "error" || h.verdict === "held");
   const stop = at >= 0 ? at : Math.max(ran.length - 1, 0);
   return { ran, ns: ran.map((h) => h.n), stop, stopsEarly: at >= 0 && at < ran.length - 1, stopHop: ran[stop] ?? null, all: Array.isArray(hops) ? hops : EMPTY };
 }

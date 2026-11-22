@@ -75,7 +75,7 @@ function HopRow({ item, selected, onSelect, mock, refs, onKey, tabbable }) {
         <span className="pgc-hop__n">{hop.n}</span>
         <span className="pgc-hop__t"><b>{txt(hop.title)}</b> <span className="ev-muted">{from.label} to {to.label}</span></span>
         {hop.illustrative && <Tag state="info" title="Illustrative: a gateway-internal step a client cannot see. Real mode leaves it out.">illustrative</Tag>}
-        {hop.verdict && hop.verdict !== "ok" && <Tag state={hop.verdict === "deny" ? "warn" : hop.verdict === "held" ? "warn" : "info"}>{verdictWord(hop.verdict)}</Tag>}
+        {hop.verdict && hop.verdict !== "ok" && <Tag state={hop.verdict === "deny" ? "warn" : hop.verdict === "held" ? "warn" : hop.verdict === "error" ? "bad" : "info"}>{verdictWord(hop.verdict)}</Tag>}
         <span className="pgc-hop__tok">{tokens.length ? `${tokens.length} ${tokens.length === 1 ? "token" : "tokens"}: ${first ? summaryOf(first.change) : ""}` : "no token on this hop"}</span>
       </button>
       {refsList.length > 0 && (

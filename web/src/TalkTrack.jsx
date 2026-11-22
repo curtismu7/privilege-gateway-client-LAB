@@ -2,11 +2,12 @@ import React from "react";
 import FloatingDialog from "./floating-dialog/FloatingDialog.jsx";
 
 // The Talk track (rule 3, section 8d.1): the presenter script in the shared FloatingDialog, so it is movable, resizable and can pop out.
-// It is the same panel as shared/talk-track/TalkTrackDialog.jsx (same props, same test ids, same singleton key) with one difference: it is
-// NON-MODAL (`noBackdrop`). The shared dialog as it stands on origin/main is modal (a backdrop dims the page and Tab is held inside), which is
-// the opposite of its own README ("docked beside the page") and of section 8f (nothing that opens during a walkthrough may block the controls).
-// A presenter talks while stepping through the reel, so this lab cannot use the modal one. The one-line upstream fix is
-// docs/upstream/talk-track-no-backdrop.patch; once it lands, replace this file with the vendored TalkTrackDialog.
+// It is the same panel as shared/talk-track/TalkTrackDialog.jsx (same props, same test ids, same singleton key, and non-modal `noBackdrop` just
+// like the shared one since AI-DEMO-Standalone #488) with one addition: a `place` prop that sets the dialog's DEFAULT size and position. The
+// shared TalkTrackDialog takes no such prop and opens at the top right of the window (y 16), over the header's Mode, Reset and Sign in controls.
+// This lab opens it below the header (panels/talkPlace.js), also in a browser that cannot store anything, where the remembered place is not
+// available and only the default counts (e2e/fixes.py N3, "talk-place-nostorage"). So the shared dialog is NOT adopted yet: it would regress
+// that. Once the shared dialog accepts a default place, delete this file, vendor the shared one with a pin and import it in App.jsx.
 export default function TalkTrack({ isOpen, onClose, talk, title = "Talk track", storageKey = "talk-track-dialog", place = null }) {
   const steps = Array.isArray(talk) ? talk : [];
   return (
