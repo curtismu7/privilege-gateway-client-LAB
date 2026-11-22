@@ -1,6 +1,7 @@
 // Test helper (never imported by the app): the REAL lab core of this repo (the in-process mock gateway, verdicts and hops) behind the same
 // paths the page calls, so component and hook tests run on real server shapes, not hand-written copies of them.
 import { createLab, LabError } from "../../server/src/lab.js";
+import { AgentError } from "../../server/src/agentChat.js";
 import catalog from "../../server/src/vendor/hop-catalog.json";
 import { ApiError } from "./api.js";
 import { validateConfig, publicConfig, castForVertical } from "../../server/src/customer.js";
@@ -34,6 +35,7 @@ export function createTestApi({ env = {}, session = null, authConfig = null, hoo
       if (path === "/api/auth/logout") { me = null; return { ok: true }; }
       if (path === "/api/discover") return await lab.discover({ door: body.door, scenario: body.scenario }, {});
       if (path === "/api/call") return await lab.call({ door: body.door, scenario: body.scenario, tool: body.tool, args: body.arguments }, {});
+      if (path === "/api/agent") return await lab.agentTurn({ door: body.door, messages: body.messages }, {});
       if (path === "/api/reset") { me = null; return lab.reset(); }
       if (path === "/api/mode") {
         const r = lab.mode.set(body.source);
@@ -42,7 +44,7 @@ export function createTestApi({ env = {}, session = null, authConfig = null, hoo
       }
       if (path === "/api/shelf") throw new ApiError(404, "not_found", "no shelf");
     } catch (e) {
-      if (e instanceof LabError) throw new ApiError(e.status, e.code, e.message);
+      if (e instanceof LabError || e instanceof AgentError) throw new ApiError(e.status, e.code, e.message);
       throw e;
     }
     throw new ApiError(404, "not_found", `no such route ${path}`);

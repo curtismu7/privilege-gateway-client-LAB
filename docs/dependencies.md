@@ -36,3 +36,13 @@ Owner decision 2026-11-22: the lab gets one standard diagram (a call-path box di
 Vetting, looked up on the registry on 2026-11-22 (`npm view @xyflow/react`): 12.12.1 published 2026-11-02 (the 12.x line has had a release about monthly since August; the latest tag is 13.0.2, published 2026-11-17, a major the kit has not been tested on, so this lab stays on 12), MIT, maintained by the xyflow team (xyflow/xyflow on GitHub). Peer dependencies `react` and `react-dom` `>=18`; this lab runs React 19.3 and the kit's own tests and ours pass on it. Runtime dependencies: `zustand` ^4, `classcat` and `@xyflow/system` (same team), no install script. `npm audit` after installing: **0 vulnerabilities**. The production page JS is 576 kB minified (182 kB gzipped) with it; Vite warns about the chunk size, and nothing is split.
 
 Test setup: jsdom has no `ResizeObserver` or `DOMMatrixReadOnly`, so `web/src/testSetup.js` gets two small stubs (lab code, the kit README asks for it). Browser proof of everything React Flow draws: `e2e/diagram.py`.
+
+## 2026-11-22: `@anthropic-ai/sdk`, for the Real agent chat
+
+Owner decision 2026-11-22: the Real Chat tab runs a real Claude agent (spec `docs/specs/2026-11-22-real-agent-chat.md`). The official SDK is the supported way to call the Messages API from Node (typed errors, retries, the beta parameters `fallbacks` and `betas`); a hand-rolled client would be a custom implementation of the same thing.
+
+| Package | Where | Version | Licence | Why |
+|---|---|---|---|---|
+| @anthropic-ai/sdk | server (runtime) | ^1.12.0 (installed 1.12.0) | Apache-2.0 | The Messages API client under `server/src/agentChat.js` |
+
+Vetting, looked up on the registry on 2026-11-22 (`npm view @anthropic-ai/sdk`): 1.12.0, last modified 2026-11-20, maintained by Anthropic (anthropics/anthropic-sdk-typescript on GitHub). Runtime dependencies: `standardwebhooks`, `json-schema-to-ts`, `@opentelemetry/api` (8 packages in all), no install script. `npm audit` on a clean install: **0 vulnerabilities**. It accepts a custom `fetch`, so every request goes through the netguard. It refuses to construct in a browser-like environment, so the lab builds the client on the first agent turn (the web tests load the server lab in jsdom and never reach it).

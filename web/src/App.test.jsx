@@ -4,6 +4,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import App from "./App.jsx";
 import { createTestApi, fetchFrom } from "./testLab.js";
 import { validateArgs } from "./ArgsTab.jsx";
+import { historyFor, HISTORY_BYTES, HISTORY_MESSAGES, MESSAGE_CHARS, plainReply } from "./ChatTab.jsx";
+import { createLab } from "../../server/src/lab.js";
+import hopCatalog from "../../server/src/vendor/hop-catalog.json";
 
 const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
 let t;
@@ -339,7 +342,9 @@ describe("Real mode", () => {
     expect(within(tid("door-picker")).getAllByRole("radio")).toHaveLength(1);
     expect(tid("scenario-select")).toBeDisabled();
     click("tab-chat");
-    expect(tid("chat-real")).toHaveTextContent(/Mock-only simulation/);
+    // No agent key in this lab's settings: the real agent says what to set, and points at the Tools tab.
+    expect(tid("chat-real-off")).toHaveTextContent(/PGC_ANTHROPIC_API_KEY/);
+    expect(tid("chat-real-off")).toHaveTextContent(/Tools tab/);
     // and back: a visible toggle that works in both directions
     fireEvent.change(tid("mode-select"), { target: { value: "mock" } });
     await waitFor(() => expect(tid("sim-banner")).not.toHaveAttribute("data-state"));
@@ -352,5 +357,102 @@ describe("Real mode", () => {
     click("reset");
     await waitWord("Ready");
     expect(tid("mode-select")).toHaveValue("mock");
+  });
+});
+
+// Real runs with real shapes: a Mock lab core makes them, and they are relabelled the way a Real lab returns them.
+async function realShapedRuns() {
+  const m = createLab({ env: { MODE: "mock" }, version: "9.9.9", catalog: hopCatalog });
+  const disc = await m.discover({ door: "demo-all-tools" }, {});
+  const call = await m.call({ door: "demo-all-tools", tool: "who_has_role", args: { role: "prod-db-admin" } }, {});
+  const blocked = await m.call({ door: "demo-some-tools", tool: "sensitive_holdings", args: { account_id: "x" } }, {});
+  return { disc, call, blocked };
+}
+const AGENT_ENV = { ...REAL_ENV, PGC_ANTHROPIC_API_KEY: "test-only-model-key" };
+const toReal = async () => { fireEvent.change(tid("mode-select"), { target: { value: "real" } }); await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live")); };
+
+describe("Real agent chat", () => {
+  test("a configured Real agent sends the text history, shows its reply, each step with the gateway's verdict, and a chip opens that run", async () => {
+    const { disc, call, blocked } = await realShapedRuns();
+    const sent = [];
+    const reply = { source: "real", simulated: false, model: "claude-sonnet-5-5", by: "model", stopped: "done", reply: "Two people hold prod-db-admin. The sensitive tool was refused.",
+      steps: [{ kind: "discover", run: disc }, { kind: "call", tool: "who_has_role", args: { role: "prod-db-admin" }, run: call }, { kind: "call", tool: "sensitive_holdings", args: { account_id: "x" }, run: blocked }] };
+    await mount({ env: AGENT_ENV, hooks: { "/api/agent": (body) => { sent.push(body); return reply; } } });
+    await toReal();
+    click("tab-chat");
+    expect(tid("chat-real-note")).toHaveTextContent(/REAL agent/);
+    expect(tid("chat-real-note")).toHaveTextContent(/claude-sonnet-5-5/);
+    fireEvent.change(tid("chat-input"), { target: { value: "who holds prod-db-admin?" } });
+    click("chat-send");
+    await screen.findByText(/Two people hold prod-db-admin/);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).toEqual({ door: "demo-all-tools", messages: [{ role: "user", text: "who holds prod-db-admin?" }] });
+    const chips = screen.getAllByTestId("chat-step-chip");
+    expect(chips.map((c) => c.textContent)).toEqual([disc.verdict.word, call.verdict.word, blocked.verdict.word]);
+    expect(chips[2]).toHaveAttribute("data-verdict", "blocked");
+    // The last run of the turn is the page's current run; a chip shows another one.
+    await waitWord(blocked.verdict.word);
+    click(chips[1]);
+    await waitWord(call.verdict.word);
+    // A second message carries the earlier turn as text.
+    fireEvent.change(tid("chat-input"), { target: { value: "and who else?" } });
+    click("chat-send");
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1].messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
+  });
+
+  test("a lab failure is worded in the chat as the lab's, and is not sent back as history", async () => {
+    const sent = [];
+    await mount({ env: AGENT_ENV, hooks: { "/api/agent": (body) => { sent.push(body); throw Object.assign(new Error("The real agent runs in Real only."), { status: 409, code: "agent_real_only" }); } } });
+    await toReal();
+    click("tab-chat");
+    fireEvent.change(tid("chat-input"), { target: { value: "hi" } });
+    click("chat-send");
+    await screen.findByText(/This lab could not run the agent/);
+    expect(screen.getAllByTestId("msg-agent")[0]).toHaveAttribute("data-stopped", "lab-error");
+    fireEvent.change(tid("chat-input"), { target: { value: "again" } });
+    click("chat-send");
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1].messages).toEqual([{ role: "user", text: "hi" }, { role: "user", text: "again" }]);
+  });
+
+  test("plainReply drops Markdown bold and heading markers, keeps line breaks and list dashes, and leaves other text alone", () => {
+    expect(plainReply("Three users:\n- **alice.chen:** admin\n- __dave__ reader")).toBe("Three users:\n- alice.chen: admin\n- dave reader");
+    expect(plainReply("## Grants\nnone")).toBe("Grants\nnone");
+    expect(plainReply("a * b ** c <b>x</b>")).toBe("a * b ** c <b>x</b>");
+  });
+
+  test("historyFor caps each earlier reply, the number of messages and the UTF-8 size the server accepts", () => {
+    const longReply = [{ who: "you", text: "q" }, { who: "agent", text: "y".repeat(MESSAGE_CHARS * 3) }];
+    expect(historyFor(longReply, "next")[1].text).toHaveLength(MESSAGE_CHARS);
+    const many = Array.from({ length: 100 }, (_, i) => ({ who: i % 2 ? "agent" : "you", text: "x" }));
+    const h = historyFor(many, "next");
+    expect(h.length).toBeLessThanOrEqual(HISTORY_MESSAGES);
+    expect(h[0].role).toBe("user");
+    const wide = Array.from({ length: 20 }, (_, i) => ({ who: i % 2 ? "agent" : "you", text: "\u201c\u2014".repeat(900) }));
+    expect(new TextEncoder().encode(JSON.stringify(historyFor(wide, "n"))).length).toBeLessThan(16 * 1024);
+  });
+
+  test("historyFor keeps the newest text within the size budget and always starts with a user message", () => {
+    // Seven full-size replies are more than the byte budget, so the oldest question drops out.
+    const full = Array.from({ length: Math.ceil(HISTORY_BYTES / MESSAGE_CHARS) + 1 }, () => ({ who: "agent", text: "x".repeat(MESSAGE_CHARS) }));
+    const msgs = [{ who: "you", text: "old question" }, ...full, { who: "agent", local: true, text: "lab error" }];
+    const h = historyFor(msgs, "new question");
+    expect(h.at(-1)).toEqual({ role: "user", text: "new question" });
+    expect(h[0].role).toBe("user");
+    expect(h.some((m) => m.text === "lab error")).toBe(false);
+    expect(h.some((m) => m.text === "old question")).toBe(false);
+  });
+
+  test("Real Tools tab: the argument form starts from the listed tool's own arguments, not the Mock sample", async () => {
+    const { disc } = await realShapedRuns();
+    const realDisc = { ...disc, source: "real", simulated: false, tools: disc.tools.map((t) => (t.name === "get_access_grants" ? { ...t, args: { resource: "prod-db-primary" }, required: ["resource"] } : t)) };
+    await mount({ env: AGENT_ENV, hooks: { "/api/discover": () => realDisc } });
+    await toReal();
+    click("tab-tools");
+    await discover();
+    click("tool-get_access_grants");
+    expect(JSON.parse(tid("args-text").value)).toEqual({ resource: "prod-db-primary" });
+    expect(tid("args-note")).toHaveTextContent("Required: resource");
   });
 });

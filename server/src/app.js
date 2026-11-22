@@ -11,6 +11,7 @@ import { allPassed } from './doctor.js';
 import { runChecks } from './checks.js';
 import { APP_ID, APP_NAME } from './config.js';
 import { createLab, LabError } from './lab.js';
+import { AgentError } from './agentChat.js';
 import { readSettings } from './settings.js';
 import { loadCustomerConfig, publicConfig, castForVertical } from './customer.js';
 import { buildStories } from './stories.js';
@@ -35,7 +36,7 @@ export const CSP = [
   "object-src 'none'", "base-uri 'none'", "form-action 'self'", "frame-ancestors 'none'",
 ].join('; ');
 
-export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = globalThis.fetch, customer = loadCustomerConfig({ env }), lab = createLab({ env, version }), health = createHealth({ demoId: APP_ID, demoName: APP_NAME, version, runChecks: () => runChecks(env), allPassed }) } = {}) {
+export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = globalThis.fetch, modelFetch = globalThis.fetch, customer = loadCustomerConfig({ env }), lab = createLab({ env, version, modelFetch }), health = createHealth({ demoId: APP_ID, demoName: APP_NAME, version, runChecks: () => runChecks(env), allPassed }) } = {}) {
   const app = express();
   app.disable('x-powered-by');
   app.use(hostCheck);
@@ -70,7 +71,7 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
   // A thrown error is JSON, never an HTML error page (rule 23).
   // eslint-disable-next-line no-unused-vars
   app.use((err, _req, res, _next) => {
-    if (err instanceof LabError || err instanceof WorkspaceError) return res.status(err.status).json({ error: err.code, message: err.message });
+    if (err instanceof LabError || err instanceof WorkspaceError || err instanceof AgentError) return res.status(err.status).json({ error: err.code, message: err.message });
     if (err instanceof LoginError) return res.status(err.status).json({ error: err.code, message: err.message, ...(err.detail ? { detail: err.detail } : {}) });
     const status = err?.status >= 400 && err?.status < 600 ? err.status : 500;
     res.status(status).json({ error: status === 500 ? 'internal_error' : 'bad_request', message: status === 500 ? 'internal error' : 'request could not be read' });
@@ -125,6 +126,12 @@ function mountLabRoutes(api, lab, { settings, customer, auth }) {
     const b = isObject(req.body) ? req.body : {};
     noStore(res);
     res.json(await lab.call({ door: b.door, scenario: b.scenario, tool: b.tool ?? undefined, args: b.arguments }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null }));
+  });
+  // The Real agent chat: one user message in, the agent's reply and every run it made out. Real only; the page sends the text history.
+  api.post('/agent', async (req, res) => {
+    const b = isObject(req.body) ? req.body : {};
+    noStore(res);
+    res.json(await lab.agentTurn({ door: b.door, messages: b.messages }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null }));
   });
   api.post('/reset', (req, res) => { noStore(res); res.set('set-cookie', clearCookie(auth.sessions, req.workspaceId)); auth.loginRuns.delete(req.workspaceId); res.json(lab.reset(req.workspaceId)); });
 }

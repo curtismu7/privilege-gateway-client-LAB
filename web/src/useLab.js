@@ -109,7 +109,13 @@ export function useLab({ api = realApi } = {}) {
   const discover = useCallback(() => exec("discover"), [exec]);
 
   const catalogOf = useCallback((name) => info?.catalog.find((t) => t.name === name) ?? null, [info]);
-  const argsFor = useCallback((name) => argText[name] ?? pretty(catalogOf(name)?.args ?? discovery?.tools?.find((t) => t.name === name)?.args ?? {}), [argText, catalogOf, discovery]);
+  // Real: the starting arguments are the ones the server built from the tool's own listed schema (the Mock samples name other arguments).
+  const argsFor = useCallback((name) => {
+    if (argText[name] !== undefined) return argText[name];
+    const listed = discovery?.tools?.find((t) => t.name === name)?.args;
+    if (info?.source === "real") return pretty(listed ?? {});
+    return pretty(catalogOf(name)?.args ?? listed ?? {});
+  }, [argText, catalogOf, discovery, info]);
   const setArgs = useCallback((name, text) => setArgText((a) => ({ ...a, [name]: text })), []);
 
   // Run a tool with the arguments the form holds (or the ones given). Arguments that are not a JSON object never leave the page.
@@ -120,6 +126,31 @@ export function useLab({ api = realApi } = {}) {
     }
     return exec("call", name, parsed);
   }, [exec, argsFor]);
+
+  // One turn of the Real agent chat. The server discovers the door and runs every tool the model asks for as a normal run, so the latest
+  // discovery and the latest run land where a Tools-tab run would (Evidence, panels). A failure is thrown for the chat to word.
+  const agentTurn = useCallback(async (messages) => {
+    if (!door || busyRef.current) return null;
+    const mine = epoch.current;
+    busyRef.current = true;
+    setBusy({ kind: "agent" }); setFailure(null);
+    try {
+      const out = await api("/api/agent", { method: "POST", body: { door, messages } });
+      if (mine !== epoch.current) return null;
+      const disc = out.steps?.find((s) => s.kind === "discover")?.run;
+      const runs = (out.steps ?? []).map((s) => s.run).filter(Boolean);
+      if (disc) setDiscovery(disc);
+      if (runs.length) setLastRun(runs[runs.length - 1]);
+      return out;
+    } catch (e) {
+      if (mine !== epoch.current) return null;
+      throw e;
+    } finally {
+      if (mine === epoch.current) { busyRef.current = false; setBusy(null); }
+    }
+  }, [api, door]);
+  // Show one earlier run (a chat step) in Evidence and the panels.
+  const showRun = useCallback((run) => { if (run) setLastRun(run); }, []);
 
   // Repeat the last action. `scenarioOverride` lets "run again without the scenario" use the new choice before React has re-rendered.
   const repeat = useCallback((scenarioOverride) => {
@@ -180,6 +211,6 @@ export function useLab({ api = realApi } = {}) {
   return {
     boot, bootError, info, identity, door, doorInfo, scenario, setScenario, discovery, lastRun, busy, failure, hasTools,
     selectedTool, setSelectedTool, argsFor, setArgs, modeError, me, authConfig,
-    reload: loadInfo, runSpec, chooseDoor, setMode, discover, callTool, repeat, reset, signInMock, signInReal, signOut,
+    reload: loadInfo, runSpec, chooseDoor, setMode, discover, callTool, agentTurn, showRun, repeat, reset, signInMock, signInReal, signOut,
   };
 }

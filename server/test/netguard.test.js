@@ -48,7 +48,7 @@ test('guardedFetch serves the mock in-process, refuses anything else, and counts
   assert.equal(s.realAllowed, 1);
   assert.equal(s.blocked, 5);
   guard.resetStats();
-  assert.deepEqual(guard.stats(), { attempts: 0, blocked: 0, mockServed: 0, realAllowed: 0, loginAllowed: 0 });
+  assert.deepEqual(guard.stats(), { attempts: 0, blocked: 0, mockServed: 0, realAllowed: 0, loginAllowed: 0, modelAllowed: 0 });
 });
 
 test('Mock makes ZERO real outbound attempts across every door, tool and scenario', async () => {
