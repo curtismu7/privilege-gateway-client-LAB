@@ -30,13 +30,12 @@ describe("useLab", () => {
     expect(r.result.current.boot).toBe("ready");
   });
 
-  test("discover on demo-some-tools keeps 18 tools with 7 permitted; a refused call does not drop the list", async () => {
+  test("discover on demo-some-tools lists only the 7 granted tools; a refused call by name does not drop the list", async () => {
     const { lab } = await boot();
     act(() => lab().chooseDoor("demo-some-tools"));
     await act(async () => { await lab().discover(); });
     expect(lab().hasTools).toBe(true);
-    expect(lab().discovery.tools).toHaveLength(18);
-    expect(lab().discovery.tools.filter((t) => t.permitted).length).toBe(7);
+    expect(lab().discovery.tools).toHaveLength(7);
     await act(async () => { await lab().callTool("sensitive_tax_record"); });
     expect(lab().lastRun.verdict.id).toBe("blocked");
     expect(lab().hasTools).toBe(true);

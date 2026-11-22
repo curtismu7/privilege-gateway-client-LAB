@@ -66,13 +66,13 @@
     {
       "id": "S01",
       "title": "The door that permits every tool",
-      "say": "This is the widest door: 18 tools discovered, 18 permitted. Everything here is simulated by the lab's own gateway, and the verdict says so.",
+      "say": "This is the widest door: 18 tools listed. Everything here is simulated by the lab's own gateway, and the verdict says so.",
       "file": "server/src/data/stories/S01-all-tools-door.json"
     },
     {
       "id": "S02",
       "title": "The door that permits some tools",
-      "say": "Eighteen tools are visible and seven are permitted. The other eleven are listed so you can see what the policy withholds. A refusal here is a result, not a failure.",
+      "say": "Seven tools are listed. The other eleven are not, and the gateway still refuses them if you ask by name. A refusal here is a result, not a failure.",
       "file": "server/src/data/stories/S02-some-tools-door.json"
     },
     {
@@ -118,7 +118,7 @@
     {
       "id": "try-s01",
       "label": "The door that permits every tool",
-      "description": "This is the widest door: 18 tools discovered, 18 permitted. Everything here is simulated by the lab's own gateway, and the verdict says so.",
+      "description": "This is the widest door: 18 tools listed. Everything here is simulated by the lab's own gateway, and the verdict says so.",
       "group": "try-it",
       "action": {
         "type": "route",
@@ -133,7 +133,7 @@
     {
       "id": "try-s02",
       "label": "The door that permits some tools",
-      "description": "Eighteen tools are visible and seven are permitted. The other eleven are listed so you can see what the policy withholds. A refusal here is a result, not a failure.",
+      "description": "Seven tools are listed. The other eleven are not, and the gateway still refuses them if you ask by name. A refusal here is a result, not a failure.",
       "group": "try-it",
       "action": {
         "type": "route",

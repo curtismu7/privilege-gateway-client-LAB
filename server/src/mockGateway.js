@@ -3,7 +3,7 @@
 // header). How a real gateway words a refusal, a held call or a filtered tool list is UNVERIFIED; this is the lab's own
 // invented shape, labelled as such. Tokens are signed with a key made at start-up and are valid nowhere else.
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { DOORS, TOOLS, isPermitted, whyNotPermitted } from './doors.js';
+import { DOORS, TOOLS, isPermitted } from './doors.js';
 
 export const MOCK_ORIGIN = 'https://mock-gateway.invalid';
 export const MOCK_SERVER = 'mock-privilege-gateway (simulated)';
@@ -54,10 +54,9 @@ export function createMockGateway({ doors = DOORS, tools = TOOLS, keys = {}, now
   const rpcErr = (id, code, message) => ({ jsonrpc: '2.0', id: id ?? null, error: { code, message } });
   const SIM = { simulated: true };
 
-  function toolEntry(door, t) {
-    const ok = isPermitted(door, t.name);
+  function toolEntry(t) {
     const properties = Object.fromEntries(Object.entries(t.args).map(([k, v]) => [k, { type: typeof v === 'number' ? 'number' : 'string' }]));
-    return { name: t.name, description: t.description, inputSchema: { type: 'object', properties, required: [...t.required] }, _meta: { simulated: true, permitted: ok, ...(ok ? {} : { reason: whyNotPermitted(t) }) } };
+    return { name: t.name, description: t.description, inputSchema: { type: 'object', properties, required: [...t.required] }, _meta: SIM };
   }
 
   function bearerOf(headers) {
@@ -129,8 +128,8 @@ export function createMockGateway({ doors = DOORS, tools = TOOLS, keys = {}, now
 
     if (msg.method === 'tools/list') {
       if (fault?.door === doorId && fault.method === 'tools/list') { fault = null; return upstreamFailure([authOk, policyOk]); }
-      return reply(200, { jsonrpc: '2.0', id, result: { tools: tools.map((t) => toolEntry(door, t)), _meta: SIM } }, {},
-        [authOk, policyOk, decision('grant', 'Grant', 'pass', `the grant of policy ${door.policy} allows ${tools.filter((t) => isPermitted(door, t.name)).length} of ${tools.length} tools`)]);
+      return reply(200, { jsonrpc: '2.0', id, result: { tools: tools.filter((t) => isPermitted(door, t.name)).map(toolEntry), _meta: SIM } }, {},
+        [authOk, policyOk, decision('grant', 'Grant', 'pass', `the grant of policy ${door.policy} lists ${tools.filter((t) => isPermitted(door, t.name)).length} tools; the others are not listed, and a call to one is refused`)]);
     }
 
     if (msg.method === 'tools/call') return toolsCall({ door, doorId, id, params: msg.params, authOk, policyOk });

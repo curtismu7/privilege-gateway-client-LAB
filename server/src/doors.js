@@ -9,8 +9,8 @@ const READ_ONLY = [
 ];
 
 export const DOORS = Object.freeze([
-  { id: 'demo-all-tools', description: 'Every tool: all 18 discovered and permitted.', policy: 'demo-all-tools', grant: 'all' },
-  { id: 'demo-some-tools', description: '7 read-only tools permitted; the other 11 are refused.', policy: 'demo-some-tools', grant: READ_ONLY },
+  { id: 'demo-all-tools', description: 'Every tool: all 18 listed and permitted.', policy: 'demo-all-tools', grant: 'all' },
+  { id: 'demo-some-tools', description: '7 read-only tools listed; the other 11 are not listed, and a call to one is refused.', policy: 'demo-some-tools', grant: READ_ONLY },
   { id: 'demo-blocked', description: 'No policy, so the gateway refuses every caller.', policy: null, grant: null },
 ]);
 
@@ -65,7 +65,3 @@ export const callerIdFor = (doorId) => String(doorId).replace(/-/g, '_').toLower
 
 // Sample arguments for a tool name the lab knows (UI help only; a Real tool the lab does not know has none).
 export const sampleArgsFor = (name) => structuredClone(toolByName(name)?.args ?? {});
-
-export function whyNotPermitted(tool) {
-  return tool?.write ? 'Write action: not in the read-only grant' : 'Sensitive tool: not in the read-only grant';
-}

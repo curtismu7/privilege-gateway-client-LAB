@@ -140,18 +140,15 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
     const shownLogin = pageLogin && pageLogin.name !== MOCK_IDENTITY.name ? pageLogin : MOCK_PAGE_LOGIN;
     const identity = identityFor({ source, declared: real.identity, mismatch, mockIdentity: MOCK_IDENTITY, pageLogin: shownLogin });
 
-    // The tool list for a discovery. Mock reads the simulated `permitted` marks from the captured body; Real never claims any.
+    // The tool list for a discovery: exactly what the gateway listed. Mock and Real both list only what the grant allows, so a listed tool carries no permitted mark.
     let tools = null;
     if (action === 'discover' && cls.outcome === 'ok') {
-      const primary = [...result.wire].reverse().find((w) => w.rpcMethod === 'tools/list');
-      const marks = new Map((primary?.response?.body?.result?.tools ?? []).map((t) => [t?.name, t?._meta]));
       tools = (result.tools ?? []).map((t) => {
         const known = toolByName(t.name);
-        const m = mock ? marks.get(t.name) : null;
-        return { name: t.name, description: t.description, args: sampleArgsFor(t.name), required: known ? [...known.required] : [], write: Boolean(known?.write), permitted: mock && typeof m?.permitted === 'boolean' ? m.permitted : null, ...(mock && m?.permitted === false ? { reason: m.reason ?? null } : {}) };
+        return { name: t.name, description: t.description, args: sampleArgsFor(t.name), required: known ? [...known.required] : [], write: Boolean(known?.write) };
       });
     }
-    const counts = tools ? { total: tools.length, permitted: mock ? tools.filter((t) => t.permitted === true).length : null } : undefined;
+    const counts = tools ? { total: tools.length } : undefined;
     const facts = { source, action, door, tool, outcome: cls.outcome, status: cls.status, message: cls.message, tools: counts, policy: doorCfg ? doorCfg.policy : undefined, scenario: sc, mockSub: MOCK_IDENTITY.name };
     const verdict = verdictFor(facts, identity);
     const built = buildHops({ source, action, door, tool, args, scenario: sc, result, facts, verdict, catalog, gateway: mock ? mockGateway : null, incomingTraceparent: traceparent });

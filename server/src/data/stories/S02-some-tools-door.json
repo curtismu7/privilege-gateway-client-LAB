@@ -4,9 +4,9 @@
   "door": "demo-some-tools",
   "mockOnly": false,
   "goal": "{{castAgentId}} at {{castBrand}} is given demo-some-tools: a read-only grant for reading access and portfolio data, not for {{castSensitive}}.",
-  "obstacle": "Discovery lists every tool the door knows about, including ones this caller must not run. A list is not a permission.",
-  "control": "The simulated gateway lists 18 tools and marks 7 permitted and 11 not permitted. Calling a not-permitted tool is refused with 403 before it reaches the backend. That refusal is the policy working, so the verdict is Blocked by policy and is never shown as a fault.",
-  "say": "Eighteen tools are visible and seven are permitted. The other eleven are listed so you can see what the policy withholds. A refusal here is a result, not a failure.",
+  "obstacle": "The list shows only the tools this caller may run. A tool that is missing from the list is still a tool the backend has, so the caller can still ask for it by name.",
+  "control": "The simulated gateway lists only the 7 tools the grant allows and leaves the other 11 out. Calling one of the 11 by name is refused with 403 before it reaches the backend. That refusal is the policy working, so the verdict is Blocked by policy and is never shown as a fault.",
+  "say": "Seven tools are listed. The other eleven are not, and the gateway still refuses them if you ask by name. A refusal here is a result, not a failure.",
   "run": {
     "action": "call",
     "door": "demo-some-tools",
@@ -19,17 +19,16 @@
     {
       "n": 1,
       "title": "Discover the tools",
-      "tell": "Pick demo-some-tools and run discovery. The verdict says 7 permitted and 11 not permitted for the identity the gateway evaluated. The 11 are marked Not permitted in the list.",
-      "say": "Same client, same call, a different policy: seven of eighteen.",
-      "why": "The list shape (all tools, with marks) is the lab's simulation. Whether a real gateway filters the list or marks it is UNVERIFIED.",
+      "tell": "Pick demo-some-tools and run discovery. The verdict says the gateway listed 7 tools for the identity it evaluated. The other 11 are simply not in the list.",
+      "say": "Same client, same call, a different policy: seven tools instead of eighteen.",
+      "why": "Observed on the real gateway: a key with a seven-tool grant is listed exactly those seven. The lab's simulation lists the same way.",
       "run": {
         "action": "discover",
         "door": "demo-some-tools"
       },
       "expect": {
         "verdict": "allowed",
-        "total": 18,
-        "permitted": 7
+        "total": 7
       }
     },
     {
@@ -50,9 +49,9 @@
     {
       "n": 3,
       "title": "Run a tool outside the grant",
-      "tell": "Run sensitive_payroll_details, which guards {{castSensitive}}. The verdict is Blocked by policy: the simulated gateway answered 403 before any backend was reached.",
-      "say": "The door refuses at the gateway. The backend never sees the call.",
-      "why": "Enforcement sits in front of the tool, so a client that ignores the Not permitted mark is still stopped.",
+      "tell": "Type sensitive_payroll_details into Run a tool by name; it is not in the list. It guards {{castSensitive}}. The verdict is Blocked by policy: the simulated gateway answered 403 before any backend was reached.",
+      "say": "The door refuses at the gateway, even for a tool the list never showed. The backend never sees the call.",
+      "why": "Enforcement sits in front of the tool, so a client that asks for a tool the list left out is still stopped.",
       "run": {
         "action": "call",
         "door": "demo-some-tools",
@@ -65,7 +64,7 @@
     {
       "n": 4,
       "title": "Read the next step",
-      "tell": "The verdict card suggests choosing a permitted tool or asking a policy admin to extend the grant.",
+      "tell": "The verdict card suggests choosing a tool from the list or asking a policy admin to extend the grant.",
       "say": "A refusal tells you what to do next, in plain words.",
       "why": "Refusals are neutral, not red: the control worked."
     }

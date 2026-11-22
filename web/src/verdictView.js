@@ -92,7 +92,7 @@ export function cardFor(s) {
       actions.push(lastRun.action === "discover" ? { id: "choose", label: "Choose a tool", primary: true } : { id: "choose", label: "Run another tool", primary: true });
       break;
     case "blocked":
-      if (lastRun.action === "call" && hasTools) actions.push({ id: "choose", label: "Choose a permitted tool", primary: true }, { id: "door", label: "Switch door" });
+      if (lastRun.action === "call" && hasTools) actions.push({ id: "choose", label: "Choose a listed tool", primary: true }, { id: "door", label: "Switch door" });
       else actions.push({ id: "repeat", label: lastRun.action === "discover" ? "Retry Get MCP tools" : "Run it again", primary: true }, { id: "door", label: "Switch door" });
       break;
     case "needs-sign-in":

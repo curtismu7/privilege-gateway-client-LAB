@@ -112,30 +112,28 @@ test('an unknown door, a bad path and a foreign origin are not served', async ()
   }
 });
 
-test('tools/list: demo-all-tools returns 18, all permitted', async () => {
+test('tools/list: demo-all-tools returns all 18', async () => {
   const gw = createMockGateway();
   const s = await openSession(gw, 'demo-all-tools');
   const r = await list(gw, 'demo-all-tools', s);
   assert.equal(r.status, 200);
   const tools = r.json.result.tools;
   assert.equal(tools.length, 18);
-  assert.equal(tools.filter((t) => t._meta.permitted).length, 18);
   assert.ok(tools.every((t) => t._meta.simulated === true && t.inputSchema.type === 'object' && t.description));
   assert.deepEqual(tools.map((t) => t.name), TOOLS.map((t) => t.name));
 });
 
-test('tools/list: demo-some-tools discovers 18 with 7 permitted and 11 marked not permitted', async () => {
+test('tools/list: demo-some-tools lists only the 7 granted tools and leaves the 11 out, as the real gateway does', async () => {
   const gw = createMockGateway();
   const s = await openSession(gw, 'demo-some-tools');
   const tools = (await list(gw, 'demo-some-tools', s)).json.result.tools;
-  assert.equal(tools.length, 18);
-  const ok = tools.filter((t) => t._meta.permitted).map((t) => t.name);
-  const no = tools.filter((t) => !t._meta.permitted);
-  assert.deepEqual(ok, ['list_entitlements', 'who_has_role', 'get_access_grants', 'get_portfolio_summary', 'get_investment_accounts', 'get_investment_balance', 'get_investment_transactions']);
-  assert.equal(no.length, 11);
-  assert.ok(no.some((t) => t.name === 'open_ticket'));
-  assert.equal(no.filter((t) => t.name.startsWith('sensitive_')).length, 10);
-  assert.ok(no.every((t) => /not in the read-only grant/.test(t._meta.reason)));
+  assert.equal(tools.length, 7);
+  assert.ok(tools.every((t) => t._meta.simulated === true && t._meta.permitted === undefined));
+  assert.deepEqual(tools.map((t) => t.name), ['list_entitlements', 'who_has_role', 'get_access_grants', 'get_portfolio_summary', 'get_investment_accounts', 'get_investment_balance', 'get_investment_transactions']);
+  assert.ok(!tools.some((t) => t.name === 'open_ticket' || t.name.startsWith('sensitive_')));
+  // A tool the list left out is still refused when it is called by name.
+  const refused = await call(gw, 'demo-some-tools', s, 'open_ticket', {});
+  assert.equal(refused.status, 403);
 });
 
 test('demo-blocked is refused with 403 before any list, for a valid key, on every method', async () => {

@@ -20,17 +20,17 @@ Never claimed in Real: that the gateway "checked" something. A client sees a sta
 
 ## S01: The door that permits every tool
 
-Pick demo-all-tools and discover. Eighteen tools come back and all eighteen are permitted for {{castAgentId}}. Run list_entitlements and the verdict is Allowed. Point at the result: it is labelled simulated sample data, not {{castBrand}}'s data.
+Pick demo-all-tools and discover. Eighteen tools come back, all of them in the grant of {{castAgentId}}. Run list_entitlements and the verdict is Allowed. Point at the result: it is labelled simulated sample data, not {{castBrand}}'s data.
 
 Then open the movie reel and step through the hops. This is the evidence view: the request, the response and, in Mock, whether the lab's own gateway checked it. Say that the widest door is not the interesting one; it is the baseline you compare the other two against.
 
 ## S02: The door that permits some tools
 
-Pick demo-some-tools and discover. Same client, same call, but now the verdict says seven permitted and eleven not permitted. The eleven are still listed so the audience can see what the policy withholds, for example the tools that guard {{castSensitive}}.
+Pick demo-some-tools and discover. Same client, same call, but now only seven tools come back. The other eleven are not listed, as on the real gateway, for example the tools that guard {{castSensitive}}. Say that a tool missing from the list is still refused if a client asks for it by name.
 
-Run a permitted tool: Allowed. Then run sensitive_payroll_details: Blocked by policy. The simulated gateway answered 403 before the backend was reached. Say plainly that the refusal is the control working, which is why it is not shown in red, and why the card tells you the next step instead of showing an error.
+Run a listed tool: Allowed. Then type sensitive_payroll_details into Run a tool by name: Blocked by policy. The simulated gateway answered 403 before the backend was reached. Say plainly that the refusal is the control working, which is why it is not shown in red, and why the card tells you the next step instead of showing an error.
 
-If you are asked whether a real gateway filters the tool list or marks it: we do not know. The mark is this lab's simulation, and Real shows whatever the gateway returns.
+If you are asked whether a real gateway filters the tool list: on the gateway this lab was checked against, a key with a seven-tool grant was listed exactly those seven, and a call to any other tool was refused with 403. Mock now lists the same way; Real still shows whatever the gateway returns.
 
 ## S03: The door with no policy
 

@@ -26,7 +26,7 @@ test('Real discovery: Allowed on what the gateway answered (observed), with no p
     assert.equal(r.verdict.basis, 'inferred');
     assert.match(r.verdict.sentence, /answered HTTP 200 \(observed\) and listed 18 tools/);
     assert.equal(r.tools.length, 18);
-    assert.ok(r.tools.every((t) => t.permitted === null), 'Real does not claim which tools are permitted');
+    assert.ok(r.tools.every((t) => t.permitted === undefined), 'Real does not claim which tools are permitted');
     assert.ok(r.tools.every((t) => !('reason' in t)));
     assert.equal(r.identity.label, 'Identity declared by this lab\'s settings');
     assert.equal(r.identity.name, null);

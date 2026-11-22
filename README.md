@@ -10,8 +10,8 @@ A client for a PingOne Privilege MCP gateway. You pick one of three standing doo
 
 | Door | Behaviour (the plan) |
 |---|---|
-| `demo-all-tools` | 18 tools discovered, all permitted |
-| `demo-some-tools` | 18 discovered, 7 permitted (read-only), 11 shown as "Not permitted" |
+| `demo-all-tools` | 18 tools listed, all permitted |
+| `demo-some-tools` | 7 listed (read-only); the other 11 are not listed, as on the real gateway, and a call to one by name is refused with 403 |
 | `demo-blocked` | no policy: every caller is refused before any tool is listed |
 
 ## What is simulated
@@ -22,7 +22,7 @@ A client for a PingOne Privilege MCP gateway. You pick one of three standing doo
 
 ## Demo-tier features (rules 10 to 13)
 
-- **Stories** (`server/src/data/stories/S01` to `S06`): all tools, some tools (the 11 refused), the blocked door, a held call, an upstream error and an identity mismatch (the last three are Mock only and say so). Each is data with `{{castBrand}}`-style tokens and names the run it teaches; a test replays every story and step against the lab and checks the verdict it names. `GET /api/stories`.
+- **Stories** (`server/src/data/stories/S01` to `S06`): all tools, some tools (the 11 left out of the list and refused by name), the blocked door, a held call, an upstream error and an identity mismatch (the last three are Mock only and say so). Each is data with `{{castBrand}}`-style tokens and names the run it teaches; a test replays every story and step against the lab and checks the verdict it names. `GET /api/stories`.
 - **Three vertical packs** (`server/src/data/verticals/`: retail, health, finance) define every token. A test fails on any token a story or the talk track uses that a pack does not define. The vertical changes the words only, never the doors or tools.
 - **customer.config** (`customer.config.example.json`; the real `customer.config.json` or `CUSTOMER_CONFIG` is git-ignored): name, tagline, vertical and the cast vocabulary. Bad fields fall back to defaults and are reported. `GET /api/config`.
 - **Workspace id** (`X-Workspace`, default `default`): scopes the run log, the trace sink (`GET /api/trace`, plus files under `PGC_DATA_DIR` when set) and the sign-in cookie. Reset clears one workspace.

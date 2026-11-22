@@ -38,7 +38,7 @@ export function identityFor({ source, declared = null, mismatch = false, mockIde
 const clip = (s, n = 1000) => { const t = String(s ?? ''); return t.length > n ? `${t.slice(0, n)}… (shortened)` : t; };
 const who = (identity) => identity?.name || 'the caller';
 
-// facts: { source, action: 'discover'|'call', door, tool?, outcome, status?, message?, tools?: { total, permitted|null }, policy?, scenario?, keyKind? }
+// facts: { source, action: 'discover'|'call', door, tool?, outcome, status?, message?, tools?: { total }, policy?, scenario?, keyKind? }
 export function verdictFor(facts, identity) {
   const { source, action, door, outcome } = facts;
   if (!OUTCOMES.includes(outcome)) throw new Error(`verdictFor: unknown outcome ${String(outcome).slice(0, 20)}`);
@@ -52,15 +52,14 @@ export function verdictFor(facts, identity) {
 
   if (outcome === 'ok' && action === 'discover') {
     id = 'allowed';
-    const t = facts.tools || { total: 0, permitted: null };
-    if (mock && Number.isInteger(t.permitted)) {
-      sentence = t.permitted === t.total
-        ? `${t.total} tools are in the grant of ${who(identity)} on ${door}, and all ${t.total} are permitted.`
-        : `${t.total} tools were discovered on ${door}: ${t.permitted} permitted, ${t.total - t.permitted} not permitted for ${who(identity)}.`;
+    const t = facts.tools || { total: 0 };
+    const n = `${t.total} tool${t.total === 1 ? '' : 's'}`;
+    if (mock) {
+      sentence = `The simulated gateway listed ${n} on ${door} for ${who(identity)}. It lists only the tools the grant allows, so a tool that is not in the list is refused with 403 when it is called.`;
       basis = 'checked';
-      next = t.permitted < t.total ? [`Run a permitted tool, or run a not-permitted one to watch the gateway refuse it.`] : ['Pick a tool, set its arguments, then run it.'];
+      next = ['Pick a tool, set its arguments, then run it. Or run a tool that is not in the list, by name, to watch the gateway refuse it.'];
     } else {
-      sentence = `The gateway answered ${st}${seen} and listed ${t.total} tool${t.total === 1 ? '' : 's'} on ${door}. Which of them this key may run is only known when one is called, because the list does not say.`;
+      sentence = `The gateway answered ${st}${seen} and listed ${n} on ${door}. The reply does not say whether the list holds only the tools this key may run, so run a tool, or one that is not listed, to see what the gateway allows.`;
       basis = 'inferred';
       next = ['Run a tool to learn what the gateway allows.'];
     }
@@ -89,10 +88,10 @@ export function verdictFor(facts, identity) {
     sentence = mock
       ? (noPolicy
         ? `${door} has no policy, so the simulated gateway refused ${who(identity)} with 403 before any tool was listed. This is the policy working as designed.`
-        : `${facts.tool ? `${facts.tool} is listed but is not in the grant` : 'The caller is not in the grant'} for ${who(identity)} on ${door}. The simulated gateway refused it with 403 before it reached the backend. This is the policy working as designed.`)
+        : `${facts.tool ? `${facts.tool} is not in the grant` : 'The caller is not in the grant'} for ${who(identity)} on ${door}. The simulated gateway refused it with 403 before it reached the backend. This is the policy working as designed.`)
       : `The gateway answered 403${seen} for ${what} on ${door}. That the key's grant does not allow it is inferred from that status; the reply does not say which check refused.`;
     basis = mock ? 'checked' : 'inferred';
-    next = noPolicy || !mock ? ['Ask a policy admin to add this caller to a policy for this door, or pick another door.'] : ['Choose one of the permitted tools, or ask a policy admin to add this tool to the grant.'];
+    next = noPolicy || !mock ? ['Ask a policy admin to add this caller to a policy for this door, or pick another door.'] : ['Choose a tool from the list, or ask a policy admin to add this tool to the grant.'];
   } else if (outcome === 'bad-request') {
     id = 'bad-request';
     basis = mock ? 'checked' : 'inferred';
