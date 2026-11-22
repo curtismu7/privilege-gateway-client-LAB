@@ -1,0 +1,48 @@
+{
+  "id": "S03",
+  "title": "The door with no policy",
+  "door": "demo-blocked",
+  "mockOnly": false,
+  "goal": "{{castAgentId}} at {{castBrand}} is pointed at demo-blocked, a door nobody has written a policy for.",
+  "obstacle": "A door exists and answers, so a client may assume it is open. Without a policy there is nothing that permits the caller.",
+  "control": "With no policy the simulated gateway refuses every caller before any tool is listed. The verdict is Blocked by policy and the tool list is empty. No policy means no access, not open access.",
+  "say": "No policy, no tools. The gateway refuses before it lists anything.",
+  "run": {
+    "action": "discover",
+    "door": "demo-blocked"
+  },
+  "expect": {
+    "verdict": "blocked"
+  },
+  "steps": [
+    {
+      "n": 1,
+      "title": "Discover on the blocked door",
+      "tell": "Pick demo-blocked and run discovery. The verdict is Blocked by policy and no tool list appears.",
+      "say": "The refusal comes first, so there is nothing to list.",
+      "why": "Where a real gateway refuses a door with no policy (at initialize or at tools/list) is UNVERIFIED. The lab refuses at initialize and says it is simulated.",
+      "run": {
+        "action": "discover",
+        "door": "demo-blocked"
+      },
+      "expect": {
+        "verdict": "blocked"
+      }
+    },
+    {
+      "n": 2,
+      "title": "Try a tool anyway",
+      "tell": "Run any tool on the same door. It is refused the same way.",
+      "say": "A client that skips discovery gets the same answer.",
+      "why": "The door, not the client, decides.",
+      "run": {
+        "action": "call",
+        "door": "demo-blocked",
+        "tool": "list_entitlements"
+      },
+      "expect": {
+        "verdict": "blocked"
+      }
+    }
+  ]
+}

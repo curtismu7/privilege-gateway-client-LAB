@@ -1,0 +1,38 @@
+# Draft (step 1a): not built yet. Local standalone form (rule 18): OrbStack, published on 127.0.0.1 only.
+# Settings come from this lab's own .env beside this file (optional; Mock needs none). Never a shared file outside this repo.
+name: privilege-gateway-client-lab
+
+services:
+  privilege-gateway-client-lab:
+    restart: unless-stopped
+    build: .
+    ports:
+      - "127.0.0.1:${HOST_PORT:-7833}:7833"
+    environment:
+      PORT: "7833"
+      # The container must listen on all interfaces; the publish above is loopback only.
+      PGC_BIND: 0.0.0.0
+      SHELF_URL: ${SHELF_URL:-https://local.ping-devops.com:8443/demo-shelf}
+      LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-privilege-gateway-client.local.ping-devops.com}
+      # Start mode. Empty (the default) = Real when its settings are present, else Mock (the image default is mock).
+      MODE: ${PGC_MODE:-}
+      # Mock sign-in (rule 11): allowed here because the port above is published on 127.0.0.1 only, and LAB_PUBLISH says so.
+      # The server still checks every request (loopback Host, no proxy header, Mock mode). Set ALLOW_MOCK_SIGNIN=0 in .env to turn it off.
+      IDP: mock
+      ALLOW_MOCK_SIGNIN: ${ALLOW_MOCK_SIGNIN:-1}
+      LAB_PUBLISH: loopback
+    # Real mode needs the owner's gateway URL, door names and agent keys. Optional: without ./.env the lab runs as Mock.
+    # The keys are write-only: never returned by any API, never logged.
+    env_file:
+      - path: ./.env
+        required: false
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7833/api/health').then(r=>r.json()).then(j=>process.exit(j.schema==='demo-health/1'&&j.state==='ready'?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      start_period: 5s
+      start_interval: 2s
+      timeout: 5s
+      retries: 3

@@ -1,0 +1,2 @@
+# sha256 of the file apps copy unchanged into web/src/signin-dialog/ (vendored from AI-DEMO-Standalone origin/main 2a53628; the canonical folder ships no pin). Re-pin: shasum -a 256 SignInDialog.jsx
+f413bc331a5a9cacdb848d3bc3e9abb699e87be328b41f00c0a1e32f46c0f58c  SignInDialog.jsx

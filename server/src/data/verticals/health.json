@@ -1,0 +1,12 @@
+{
+  "id": "health",
+  "label": "Health",
+  "source": "invented example; no customer data",
+  "cast": {
+    "castBrand": "Contoso Health",
+    "castAgentId": "claims-agent",
+    "castSensitive": "patient records and claims detail",
+    "castApprover": "the clinical operations lead",
+    "castTicket": "a coverage-review ticket"
+  }
+}

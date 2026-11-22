@@ -1,0 +1,27 @@
+{
+  "demos": [
+    {
+      "id": "privilege-gateway-client",
+      "name": "Privilege Gateway Client Lab",
+      "kind": "Demo",
+      "description": "A client for a PingOne Privilege MCP gateway. Pick a door (all tools, some tools, none), discover its tools, run one and see the verdict first, then the evidence. Mock is a simulated gateway; Real uses your own door keys.",
+      "url": "http://127.0.0.1:7833",
+      "healthPath": "/api/health",
+      "composeFile": "privilege-gateway-client-LAB/docker-compose.yml",
+      "composeOverlays": [],
+      "pingProducts": [],
+      "catalogId": "D143",
+      "notes": "Host-run: ./scripts/run.sh (port 7833). Mock needs no tenant and no credentials. Docker: docker compose up --build -d (published on 127.0.0.1 only). Real (owner-run) reads PGC_* settings from this lab's own .env. The repo is not assigned yet. The catalog id D143 is the owner's choice (2026-11-22); the content pack already uses it.",
+      "tags": [
+        "pingone-privilege",
+        "agent-gateway",
+        "ai-agent-security",
+        "mcp",
+        "agent-controls",
+        "simulated",
+        "real"
+      ],
+      "where": "installed"
+    }
+  ]
+}

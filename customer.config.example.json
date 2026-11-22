@@ -1,0 +1,11 @@
+{
+  "_readme": "Copy to customer.config.json (git-ignored, or point CUSTOMER_CONFIG at it) to brand a run. name and tagline are the page title and subtitle. vertical is retail, health or finance. cast renames the people and things the stories talk about; agentId is lowercase letters, digits and dashes. Everything else is ignored.",
+  "name": "Privilege Gateway Client Lab",
+  "tagline": "Which tools may our agent use, and why?",
+  "vertical": "finance",
+  "cast": {
+    "brand": "Fabrikam Bank",
+    "agentId": "payments-agent",
+    "approver": "the treasury approver"
+  }
+}

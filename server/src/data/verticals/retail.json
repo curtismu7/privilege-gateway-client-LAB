@@ -1,0 +1,12 @@
+{
+  "id": "retail",
+  "label": "Retail",
+  "source": "invented example; no customer data",
+  "cast": {
+    "castBrand": "Northwind Retail",
+    "castAgentId": "orders-agent",
+    "castSensitive": "customer order histories and membership details",
+    "castApprover": "the store operations lead",
+    "castTicket": "a stock-review ticket"
+  }
+}

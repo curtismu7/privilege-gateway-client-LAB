@@ -1,0 +1,47 @@
+{
+  "id": "S06",
+  "title": "Page login is not the identity the gateway evaluated",
+  "door": "demo-all-tools",
+  "mockOnly": true,
+  "persona": "demouser",
+  "goal": "A person signs in to this page as demouser, while the door's agent key acts as aidemo. {{castBrand}} wants to know which of the two the gateway decides on.",
+  "obstacle": "Two identities are on the screen and they are not the same. It is easy to assume the gateway judged the person who is signed in.",
+  "control": "The gateway decides on the identity behind the agent key, not on the page login. The identity rail shows both and labels the mismatch as a SIMULATED scenario. In Real the lab shows only the identity its own settings declare, because a real 401 or 403 names no identity.",
+  "say": "Two names, one decision, and it belongs to the key's identity. This mismatch is a Mock-only scenario.",
+  "run": {
+    "action": "call",
+    "door": "demo-all-tools",
+    "tool": "list_entitlements",
+    "scenario": "identity-mismatch"
+  },
+  "expect": {
+    "verdict": "allowed",
+    "mismatch": true
+  },
+  "steps": [
+    {
+      "n": 1,
+      "title": "Run with the mismatch scenario",
+      "tell": "Choose the identity-mismatch scenario and run list_entitlements. The verdict is Allowed, and the rail shows the page login demouser beside the gateway identity aidemo, with a SIMULATED note.",
+      "say": "Allowed for aidemo. The page login did not decide anything.",
+      "why": "A page login proves who is at the screen. The agent key decides who the gateway evaluates.",
+      "run": {
+        "action": "call",
+        "door": "demo-all-tools",
+        "tool": "list_entitlements",
+        "scenario": "identity-mismatch"
+      },
+      "expect": {
+        "verdict": "allowed",
+        "mismatch": true
+      }
+    },
+    {
+      "n": 2,
+      "title": "Read the identity label",
+      "tell": "The label reads Identity the gateway evaluated in Mock. In Real it would read Identity declared by this lab's settings.",
+      "say": "The label changes with the source because what the lab knows changes.",
+      "why": "Real never says the gateway checked an identity, because it cannot see one."
+    }
+  ]
+}

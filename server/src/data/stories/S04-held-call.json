@@ -1,0 +1,42 @@
+{
+  "id": "S04",
+  "title": "A write that waits for a person",
+  "door": "demo-all-tools",
+  "mockOnly": true,
+  "goal": "{{castAgentId}} at {{castBrand}} wants to open {{castTicket}} through open_ticket, a tool that changes data.",
+  "obstacle": "A permitted write is still a write. An organisation may want a person to approve it first.",
+  "control": "In this simulation the gateway holds the call until {{castApprover}} approves it in the console. The verdict is Held, nothing ran, and the body is invented by this lab and labelled simulated.",
+  "say": "The call is held, not refused and not run. This is a simulation: nobody has captured a real held call yet, so Real never claims one.",
+  "run": {
+    "action": "call",
+    "door": "demo-all-tools",
+    "tool": "open_ticket"
+  },
+  "expect": {
+    "verdict": "held"
+  },
+  "steps": [
+    {
+      "n": 1,
+      "title": "Run the write tool",
+      "tell": "On demo-all-tools, select open_ticket and run it. The verdict is Held and the card says the hold is simulated.",
+      "say": "Allowed to ask, waiting for {{castApprover}}.",
+      "why": "The held-call body here is the lab's invention. A real held-call shape needs an owner capture.",
+      "run": {
+        "action": "call",
+        "door": "demo-all-tools",
+        "tool": "open_ticket"
+      },
+      "expect": {
+        "verdict": "held"
+      }
+    },
+    {
+      "n": 2,
+      "title": "Look at the hops",
+      "tell": "Open the reel. The last gateway hop shows the call held and the approval hop is the lab's simulation of a person's decision. Nothing was approved and nothing ran.",
+      "say": "The approval step is drawn for teaching and is labelled simulated.",
+      "why": "A client cannot see inside a real gateway, so the lab never presents a simulated hop as something it observed."
+    }
+  ]
+}

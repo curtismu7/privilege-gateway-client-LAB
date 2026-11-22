@@ -1,0 +1,227 @@
+{
+  "schema": "demo-content-pack/1",
+  "id": "privilege-gateway-client",
+  "title": "Privilege Gateway Client Lab",
+  "version": "0.1.0",
+  "demo": {
+    "id": "privilege-gateway-client",
+    "name": "Privilege Gateway Client Lab",
+    "catalog": "D143",
+    "baseUrl": "http://localhost:7833",
+    "doctor": "/api/health",
+    "tags": [
+      "pingone-privilege",
+      "agent-gateway",
+      "ai-agent-security",
+      "mcp",
+      "agent-controls",
+      "simulated",
+      "real"
+    ]
+  },
+  "glossary": [
+    {
+      "id": "door",
+      "term": "Door",
+      "definition": "A standing MCP endpoint on a Privilege gateway. A caller picks a door, lists its tools and calls one. This lab ships three: one that permits every tool, one that permits some, and one that refuses every caller.",
+      "aliases": [
+        "MCP door"
+      ]
+    },
+    {
+      "id": "agent-access-key",
+      "term": "Agent access key",
+      "definition": "The credential an agent presents to a door. In Real mode the lab reads one per door from its own .env; it is write-only and never shown, logged or traced.",
+      "aliases": [
+        "agent key"
+      ]
+    },
+    {
+      "id": "held-call",
+      "term": "Held call",
+      "definition": "A call a gateway pauses until a person approves it. In this lab a hold is Mock only and its body is invented: nobody has captured a real one, so Real never claims it.",
+      "aliases": [
+        "hold"
+      ]
+    },
+    {
+      "id": "verdict",
+      "term": "Verdict",
+      "definition": "The outcome the lab shows first for a call: Allowed, Blocked by policy, Needs sign-in, Held, or Upstream error. A refusal is a result, not a fault.",
+      "aliases": []
+    }
+  ],
+  "sources": [
+    {
+      "id": "mcp-spec",
+      "title": "Model Context Protocol specification",
+      "url": "https://modelcontextprotocol.io/specification",
+      "kind": "standard",
+      "use": "The tools/list and tools/call wire the lab speaks to a door.",
+      "status": "not-read",
+      "checked": "2026-11-21"
+    }
+  ],
+  "stories": [
+    {
+      "id": "S01",
+      "title": "The door that permits every tool",
+      "say": "This is the widest door: 18 tools discovered, 18 permitted. Everything here is simulated by the lab's own gateway, and the verdict says so.",
+      "file": "server/src/data/stories/S01-all-tools-door.json"
+    },
+    {
+      "id": "S02",
+      "title": "The door that permits some tools",
+      "say": "Eighteen tools are visible and seven are permitted. The other eleven are listed so you can see what the policy withholds. A refusal here is a result, not a failure.",
+      "file": "server/src/data/stories/S02-some-tools-door.json"
+    },
+    {
+      "id": "S03",
+      "title": "The door with no policy",
+      "say": "No policy, no tools. The gateway refuses before it lists anything.",
+      "file": "server/src/data/stories/S03-blocked-door.json"
+    },
+    {
+      "id": "S04",
+      "title": "A write that waits for a person",
+      "say": "The call is held, not refused and not run. This is a simulation: nobody has captured a real held call yet, so Real never claims one.",
+      "file": "server/src/data/stories/S04-held-call.json"
+    },
+    {
+      "id": "S05",
+      "title": "When the gateway cannot finish",
+      "say": "This is not a refusal. Nothing was decided, because nothing answered.",
+      "file": "server/src/data/stories/S05-upstream-error.json"
+    },
+    {
+      "id": "S06",
+      "title": "Page login is not the identity the gateway evaluated",
+      "say": "Two names, one decision, and it belongs to the key's identity. This mismatch is a Mock-only scenario.",
+      "file": "server/src/data/stories/S06-identity-mismatch.json"
+    }
+  ],
+  "cards": [
+    {
+      "id": "concept-doors",
+      "label": "The three doors",
+      "description": "All tools, some tools, and none: the same client against three policies.",
+      "group": "concept",
+      "action": {
+        "type": "route",
+        "href": "/"
+      },
+      "terms": [
+        "door",
+        "verdict"
+      ]
+    },
+    {
+      "id": "try-s01",
+      "label": "The door that permits every tool",
+      "description": "This is the widest door: 18 tools discovered, 18 permitted. Everything here is simulated by the lab's own gateway, and the verdict says so.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/?story=S01"
+      },
+      "terms": [
+        "door",
+        "verdict"
+      ],
+      "story": "S01"
+    },
+    {
+      "id": "try-s02",
+      "label": "The door that permits some tools",
+      "description": "Eighteen tools are visible and seven are permitted. The other eleven are listed so you can see what the policy withholds. A refusal here is a result, not a failure.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/?story=S02"
+      },
+      "terms": [
+        "door",
+        "verdict"
+      ],
+      "story": "S02"
+    },
+    {
+      "id": "try-s03",
+      "label": "The door with no policy",
+      "description": "No policy, no tools. The gateway refuses before it lists anything.",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/?story=S03"
+      },
+      "terms": [
+        "door",
+        "verdict"
+      ],
+      "story": "S03"
+    },
+    {
+      "id": "try-s04",
+      "label": "A write that waits for a person",
+      "description": "The call is held, not refused and not run. This is a simulation: nobody has captured a real held call yet, so Real never claims one. (Mock only)",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/?story=S04"
+      },
+      "terms": [
+        "door",
+        "held-call",
+        "verdict"
+      ],
+      "story": "S04"
+    },
+    {
+      "id": "try-s05",
+      "label": "When the gateway cannot finish",
+      "description": "This is not a refusal. Nothing was decided, because nothing answered. (Mock only)",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/?story=S05"
+      },
+      "terms": [
+        "door",
+        "verdict"
+      ],
+      "story": "S05"
+    },
+    {
+      "id": "try-s06",
+      "label": "Page login is not the identity the gateway evaluated",
+      "description": "Two names, one decision, and it belongs to the key's identity. This mismatch is a Mock-only scenario. (Mock only)",
+      "group": "try-it",
+      "action": {
+        "type": "route",
+        "href": "/?story=S06"
+      },
+      "terms": [
+        "door",
+        "verdict"
+      ],
+      "story": "S06"
+    },
+    {
+      "id": "ref-doctor",
+      "label": "Doctor and health",
+      "description": "Preflight checks and the demo-health/1 endpoint.",
+      "group": "setup",
+      "action": {
+        "type": "route",
+        "href": "/api/health"
+      }
+    }
+  ],
+  "documents": [
+    {
+      "id": "talk-track",
+      "path": "docs/talk-track.md",
+      "title": "Talk track"
+    }
+  ]
+}

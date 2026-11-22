@@ -1,0 +1,50 @@
+{
+  "schema": "diagram-studio/1",
+  "id": "pgc-call-path",
+  "title": "How a tool call travels",
+  "lede": "You pick a door and a tool in the browser. This lab's server sends the MCP call to the PingOne Privilege gateway with the door's agent key. The gateway checks who is calling and asks the policy. Only a permitted call reaches the MCP backend. The answer comes back as one of four outcomes, and the lab shows that word first.",
+  "groups": {
+    "page": { "label": "Your browser", "color": "grey" },
+    "lab": { "label": "This lab", "color": "dark" },
+    "gateway": { "label": "PingOne Privilege gateway", "color": "blue" },
+    "backend": { "label": "MCP backend", "color": "grey" },
+    "outcome": { "label": "Outcome: the call went through", "color": "green" },
+    "refusal": { "label": "Outcome: the call did not run", "color": "amber" },
+    "failure": { "label": "Outcome: the backend failed", "color": "dark" }
+  },
+  "nodes": [
+    { "id": "browser", "group": "page", "label": "Browser", "sub": ["You pick a door and a tool", "The agent key is never here"], "x": 0, "y": 120 },
+    { "id": "lab", "group": "lab", "label": "Lab server", "sub": ["Holds the door's agent key", "Sends the MCP call, turns the answer into a verdict"], "x": 250, "y": 120 },
+    { "id": "door", "group": "gateway", "label": "Gateway door", "sub": ["One door per policy", "Checks the agent key and who it stands for"], "x": 500, "y": 120 },
+    { "id": "policy", "group": "gateway", "label": "Policy check", "sub": ["May this identity call this tool?", "No policy means no"], "x": 750, "y": 120 },
+    { "id": "mcp", "group": "backend", "label": "MCP backend", "sub": ["The tools themselves", "Only a permitted call gets here"], "x": 750, "y": 0 },
+    { "id": "verdict-allowed", "group": "outcome", "label": "Allowed", "sub": ["The tool ran and answered"], "x": 1040, "y": -8 },
+    { "id": "verdict-upstream", "group": "failure", "label": "Upstream error", "sub": ["The call was permitted, the backend did not answer"], "x": 1040, "y": 50 },
+    { "id": "verdict-blocked", "group": "refusal", "label": "Blocked by policy", "sub": ["Refused before the backend: nothing reached the tool"], "x": 1040, "y": 112 },
+    { "id": "verdict-held", "group": "refusal", "label": "Held for approval", "sub": ["The gateway holds the call for a person (simulated here)"], "x": 1040, "y": 170 }
+  ],
+  "edges": [
+    { "source": "browser", "target": "lab", "label": "1. pick a door, run a tool" },
+    { "source": "lab", "target": "door", "label": "2. MCP call with the agent key" },
+    { "source": "door", "target": "policy", "label": "3. who is calling, and may they?" },
+    { "source": "policy", "target": "mcp", "label": "4. permitted: run the tool" },
+    { "source": "mcp", "target": "verdict-allowed", "label": "5. the tool answered" },
+    { "source": "mcp", "target": "verdict-upstream", "label": "5. no answer from the backend", "dashed": true },
+    { "source": "policy", "target": "verdict-blocked", "label": "4. refused: not granted", "dashed": true },
+    { "source": "policy", "target": "verdict-held", "label": "4. needs a person (simulated)", "dashed": true },
+    { "source": "lab", "target": "browser", "label": "6. the verdict, shown first", "dashed": true }
+  ],
+  "steps": [
+    { "title": "Pick a door and a tool", "what": "The page asks this lab's server to open one of the standing doors and call a tool. The agent key stays on the server.", "why": "The browser never holds the key, so the page cannot leak it.", "edges": [0], "hop": "website" },
+    { "title": "Open the door with the agent key", "what": "The lab starts the MCP session with the gateway, using the key for the door that was picked.", "why": "The key decides which identity the gateway evaluates, not who is signed in to this page.", "edges": [1], "hop": "privilege-gateway-leg" },
+    { "title": "Exchange the key for a token", "what": "Inside the gateway the key is exchanged for a token. A client cannot see this step, so Mock shows it as illustrative and Real leaves it out.", "why": "The policy decides about an identity, not about a key.", "edges": [2], "hop": "token-exchange" },
+    { "title": "Check the token", "what": "The gateway introspects the token to learn who is calling. A client cannot see this step either.", "why": "A bad or expired token is refused here, before any policy runs.", "edges": [2], "hop": "gateway-check" },
+    { "title": "Ask for the tools", "what": "The lab asks the door which tools it offers. The gateway answers with only the tools this identity may see.", "why": "Discovery is filtered by the same policy as a call.", "edges": [1], "hop": "tools-list" },
+    { "title": "Ask the policy", "what": "The gateway asks the policy whether this identity may call this tool. The answer is permit or refuse.", "why": "This is the decision. Everything after it follows from it.", "edges": [2], "hop": "authorize-decision" },
+    { "title": "The tool runs", "what": "The call was permitted, so it reaches the MCP backend and the tool answers.", "why": "Only a permitted call is ever dispatched.", "edges": [3, 4], "hop": "tool-dispatched" },
+    { "title": "The backend did not answer", "what": "The call was permitted and dispatched, but the backend failed to answer. This is an upstream error, not a policy decision.", "why": "A refusal and a failure look alike on a screen. The path tells them apart.", "edges": [3, 5], "hop": "tool-dispatched:deny" },
+    { "title": "Refused before the backend", "what": "The policy refused the call, so nothing reached the tool.", "why": "A refusal is a correct answer, not an error.", "edges": [6], "hop": "tool-refused" },
+    { "title": "Held for a person", "what": "The gateway holds the call until a person approves it. This lab simulates that hold.", "why": "Some calls are allowed only with a human in the loop.", "edges": [7], "hop": "tool-held" },
+    { "title": "The verdict is shown first", "what": "The lab turns the gateway's answer into one word and shows it before the evidence.", "why": "The outcome leads; the path explains it.", "edges": [8], "hop": "agent-reply" }
+  ]
+}

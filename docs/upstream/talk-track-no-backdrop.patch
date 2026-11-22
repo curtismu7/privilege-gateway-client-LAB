@@ -1,0 +1,10 @@
+--- a/shared/talk-track/TalkTrackDialog.jsx
++++ b/shared/talk-track/TalkTrackDialog.jsx
+@@ -17,6 +17,7 @@
+       placement="right"
+       storageKey={storageKey}
+       singletonKey="talk-track"
++      noBackdrop
+       testId="talk-track-dialog"
+     >
+       {steps.length === 0 ? (

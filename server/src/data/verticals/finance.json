@@ -1,0 +1,12 @@
+{
+  "id": "finance",
+  "label": "Finance",
+  "source": "invented example; no customer data",
+  "cast": {
+    "castBrand": "Fabrikam Bank",
+    "castAgentId": "payments-agent",
+    "castSensitive": "payroll, tax and identity-verification records",
+    "castApprover": "the treasury approver",
+    "castTicket": "an access-review ticket"
+  }
+}

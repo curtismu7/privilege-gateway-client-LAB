@@ -1,0 +1,27 @@
+{
+  "name": "privilege-gateway-client-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A client for a PingOne Privilege MCP gateway: pick a standing door, discover its tools, run one, and see the verdict first, with the evidence behind it.",
+  "license": "MIT",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "start": "npm start -w server",
+    "build": "npm run build -w web",
+    "test": "npm test -w server && npm test -w web && node --test scripts/*.test.mjs",
+    "doctor": "node scripts/doctor.mjs",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "content-pack": "node scripts/build-content-pack.mjs && node scripts/validate-content-pack.mjs",
+    "reset": "node scripts/reset.mjs"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0"
+  }
+}

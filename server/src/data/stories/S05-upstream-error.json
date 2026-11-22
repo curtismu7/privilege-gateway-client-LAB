@@ -1,0 +1,52 @@
+{
+  "id": "S05",
+  "title": "When the gateway cannot finish",
+  "door": "demo-all-tools",
+  "mockOnly": true,
+  "goal": "{{castAgentId}} at {{castBrand}} calls a permitted tool while the gateway's upstream is down.",
+  "obstacle": "A failure looks like a refusal if you only read the status. A client must tell \"the policy said no\" from \"nothing answered\".",
+  "control": "The lab arms a one-shot simulated 502. The verdict is Upstream error: a connection problem, not a policy decision, and the error text is shown in full in the verdict pane as JSON, never as an HTML error page.",
+  "say": "This is not a refusal. Nothing was decided, because nothing answered.",
+  "run": {
+    "action": "call",
+    "door": "demo-all-tools",
+    "tool": "list_entitlements",
+    "scenario": "upstream-error"
+  },
+  "expect": {
+    "verdict": "upstream"
+  },
+  "steps": [
+    {
+      "n": 1,
+      "title": "Arm the failure and run",
+      "tell": "Choose the upstream-error scenario (labelled simulated) and run list_entitlements. The verdict is Upstream error.",
+      "say": "A connection failure, named as one.",
+      "why": "Rule: a downstream failure is always named, never a blank page or an empty 200.",
+      "run": {
+        "action": "call",
+        "door": "demo-all-tools",
+        "tool": "list_entitlements",
+        "scenario": "upstream-error"
+      },
+      "expect": {
+        "verdict": "upstream"
+      }
+    },
+    {
+      "n": 2,
+      "title": "Run it again",
+      "tell": "Run it again without the scenario. The fault was one-shot, so the call now succeeds.",
+      "say": "Same call, different outcome, because the cause was the connection.",
+      "why": "Telling a transient fault from a policy refusal is the point of the verdict word.",
+      "run": {
+        "action": "call",
+        "door": "demo-all-tools",
+        "tool": "list_entitlements"
+      },
+      "expect": {
+        "verdict": "allowed"
+      }
+    }
+  ]
+}
