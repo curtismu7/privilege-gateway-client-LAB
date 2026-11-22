@@ -22,8 +22,8 @@ test('the shelf entry is one demo with this lab\'s identity, port 7833, and no P
   assert.equal(entry.where, 'installed');
 });
 
-test('catalogId is the owner\'s D143 (the content pack uses the same one), and no repo is claimed that does not exist yet', () => {
-  assert.equal(entry.catalogId, 'D143');
+test('catalogId is the owner\'s D144 (the content pack uses the same one; D143 belongs to ciba-approval-sequence-LAB), and no repo is claimed that does not exist yet', () => {
+  assert.equal(entry.catalogId, 'D144');
   assert.equal(JSON.parse(fs.readFileSync(new URL('../content-pack.json', import.meta.url), 'utf8')).demo.catalog, entry.catalogId);
   assert.equal('repo' in entry, false);
 });
