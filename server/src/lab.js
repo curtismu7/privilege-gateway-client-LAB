@@ -16,6 +16,8 @@ import { ENV_PREFIX } from './config.js';
 import { createWorkspaces, DEFAULT_WORKSPACE } from './workspaces.js';
 import { readSettings } from './settings.js';
 import { loginConfig } from './auth/pingoneLogin.js';
+import { formFromSchema, cleanSchema } from './toolSchema.js';
+import { createAgentChat } from './agentChat.js';
 
 export class LabError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
@@ -87,13 +89,21 @@ function classify(result, { action, source }) {
   return { outcome: 'ok', status: statusOf(primary), message: null };
 }
 
-export function createLab({ env = process.env, version = '0.0.0', catalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8')) } = {}) {
+// name -> inputSchema, from the last captured tools/list reply (already scrubbed and size-capped by the shared client).
+function schemasFromWire(wire) {
+  const rec = [...(wire ?? [])].reverse().find((w) => w.rpcMethod === 'tools/list');
+  const listed = rec?.response?.body?.result?.tools;
+  return new Map(Array.isArray(listed) ? listed.filter((t) => t && typeof t.name === 'string').map((t) => [t.name, t.inputSchema]) : []);
+}
+
+export function createLab({ env = process.env, version = '0.0.0', catalog = JSON.parse(fs.readFileSync(catalogFile, 'utf8')), modelFetch = globalThis.fetch } = {}) {
   const mockGateway = createMockGateway();
   // The guard reads the mode and the Real origin lazily, because Real is loaded with the guard and the mode needs Real's state.
   let real;
   let mode;
   const login = loginConfig(env);
-  const guard = createNetguard({ getMode: () => mode.get(), mockGateway, getRealOrigin: () => real?.origin ?? null, getLoginBase: () => (login.ok ? login.base : null) });
+  let agentChat = null; // the Real agent; built at the end, once the lab object exists (it runs its tools through lab.discover and lab.call)
+  const guard = createNetguard({ getMode: () => mode.get(), mockGateway, getRealOrigin: () => real?.origin ?? null, getLoginBase: () => (login.ok ? login.base : null), getModelConfigured: () => agentChat?.info().configured === true });
   real = loadReal(env, guard, { clientInfo: { name: 'privilege-gateway-client-lab', version } });
   mode = createMode({ wanted: env.MODE, realAvailable: real.available, realReason: real.reason });
   const workspaces = createWorkspaces({ dataDir: readSettings(env).dataDir });
@@ -143,9 +153,15 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
     // The tool list for a discovery: exactly what the gateway listed. Mock and Real both list only what the grant allows, so a listed tool carries no permitted mark.
     let tools = null;
     if (action === 'discover' && cls.outcome === 'ok') {
+      const listedSchemas = mock ? new Map() : schemasFromWire(result.wire);
       tools = (result.tools ?? []).map((t) => {
         const known = toolByName(t.name);
-        return { name: t.name, description: t.description, args: sampleArgsFor(t.name), required: known ? [...known.required] : [], write: Boolean(known?.write) };
+        if (mock) return { name: t.name, description: t.description, args: sampleArgsFor(t.name), required: known ? [...known.required] : [], write: Boolean(known?.write) };
+        // Real: the form and the agent use the tool's own listed schema, never the Mock samples (a Mock argument name is not the real tool's).
+        // The shared Real client keeps only name and description, so the schema is read from the captured tools/list reply.
+        const schema = listedSchemas.get(t.name);
+        const form = formFromSchema(schema);
+        return { name: t.name, description: t.description, args: form ? form.args : {}, required: form ? form.required : [], write: Boolean(known?.write), inputSchema: cleanSchema(schema) };
       });
     }
     const counts = tools ? { total: tools.length } : undefined;
@@ -180,7 +196,7 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
     return DOORS.map((d) => ({ id: d.id, description: d.description, policy: d.policy, keyed: true }));
   };
 
-  return {
+  const lab = {
     mode,
     info() {
       const source = mode.get();
@@ -191,9 +207,12 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
         identity: identityFor({ source, declared: real.identity, mockIdentity: MOCK_IDENTITY, pageLogin: MOCK_PAGE_LOGIN }),
         scenarios: source === 'mock' ? SCENARIOS : ['none'],
         catalog: TOOLS.map((t) => ({ name: t.name, description: t.description, args: structuredClone(t.args), required: [...t.required], write: Boolean(t.write) })),
+        // The Real agent chat: configured or not, which model, and what to set. Never the key.
+        agent: (({ configured, model, reason }) => ({ configured, model, reason, available: source === 'real' && configured }))(agentChat.info()),
         version,
       };
     },
+    agentTurn: (input, opts) => agentChat.turn(input, opts),
     setSource: (next) => mode.set(next),
     discover: (input, opts) => run('discover', input, opts),
     call: (input, opts) => run('call', input, opts),
@@ -214,4 +233,6 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
     netguardSelfTest,
     realAvailable: real.available,
   };
+  agentChat = createAgentChat({ env, lab, guard, fetchImpl: modelFetch });
+  return lab;
 }

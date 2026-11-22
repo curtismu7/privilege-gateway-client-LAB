@@ -63,7 +63,7 @@ test('.env.example lists names only: no value except the port, the .example gate
 
 test('no shipped file of ours names an absolute author path, a settings file outside the repo, an AI-DEMO2 path or a real-looking id', () => {
   const hits = [];
-  const reserved = /^(localhost|127\.0\.0\.1|(.+\.)?(example|invalid)|169\.254\.169\.254|local\.ping-devops\.com|[\w-]+\.169\.254\.169\.254|local\.ping-devops\.com|modelcontextprotocol\.io|github\.com|raw\.githubusercontent\.com|www\.w3\.org|json-schema\.org|auth\.pingone\.(com|eu|ca|asia|com\.au|sg)?)$/;
+  const reserved = /^(localhost|127\.0\.0\.1|(.+\.)?(example|invalid)|169\.254\.169\.254|local\.ping-devops\.com|[\w-]+\.169\.254\.169\.254|local\.ping-devops\.com|modelcontextprotocol\.io|github\.com|raw\.githubusercontent\.com|www\.w3\.org|json-schema\.org|api\.anthropic\.com|auth\.pingone\.(com|eu|ca|asia|com\.au|sg)?)$/;
   for (const r of ours()) {
     if (r === 'scripts/repo.test.mjs' || r === 'scripts/compose.test.mjs' || r === 'docs/build-log.md') continue;
     const t = read(r);

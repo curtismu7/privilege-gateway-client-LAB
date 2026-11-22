@@ -42,7 +42,7 @@ test('the doctor checks pass on a clean env and fail on a wrong port or a non-lo
   assert.ok(runChecks({}).every((c) => c.level !== 'fail'));
   assert.ok(runChecks({ PORT: '8080' }).some((c) => c.id === 'port' && c.level === 'fail'));
   const ids = runChecks({}).map((c) => c.id);
-  assert.deepEqual(ids, ['node', 'bind', 'port', 'netguard', 'mock-gateway', 'real', 'stories', 'customer-config', 'talk-track', 'mock-signin', 'page-login', 'tenant']);
+  assert.deepEqual(ids, ['node', 'bind', 'port', 'netguard', 'mock-gateway', 'real', 'agent', 'stories', 'customer-config', 'talk-track', 'mock-signin', 'page-login', 'tenant']);
   assert.ok(runChecks({ PGC_BIND: '0.0.0.0' }).every((c) => c.level !== 'fail'), 'an explicit opt-in is allowed (the container sets it)');
 });
 
