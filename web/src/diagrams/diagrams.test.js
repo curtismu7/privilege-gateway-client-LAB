@@ -122,7 +122,7 @@ describe("mapping a run onto the diagram", () => {
     ["allowed", { door: "demo-all-tools", tool: "list_entitlements", args: U }],
     ["blocked", { door: "demo-blocked", tool: "list_entitlements", args: U }],
     ["blocked", { door: "demo-some-tools", tool: "sensitive_patient_records", args: { patient_id: "pat_4410" } }],
-    ["held", { door: "demo-all-tools", tool: "open_ticket", args: { title: "Review access", action: "flag" } }],
+    ["held", { door: "demo-all-tools", tool: "open_ticket", args: { user: "carol.nguyen", resource: "prod-db-primary", action: "review", justification: "Quarterly access review" } }],
     ["upstream", { door: "demo-all-tools", tool: "list_entitlements", args: U, scenario: "upstream-error" }],
     ["needs-sign-in", { door: "demo-all-tools", tool: "list_entitlements", args: U, scenario: "no-key" }],
   ];

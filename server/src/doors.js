@@ -17,10 +17,10 @@ export const DOORS = Object.freeze([
 // sample = the invented data a simulated allowed call returns. hitl = the approval policy a write waits on (Mock only).
 const T = (name, description, args, required, sample, extra = {}) => ({ name, description, args, required, sample, ...extra });
 export const TOOLS = Object.freeze([
-  T('list_entitlements', 'Entitlements held by a person.', { user: 'aidemo' }, ['user'], { user: 'aidemo', entitlements: ['Treasury Approver', 'Portfolio Viewer'] }),
-  T('who_has_role', 'People who hold a given role.', { role: 'Treasury Approver' }, ['role'], { role: 'Treasury Approver', holders: ['aidemo', 'demouser'] }),
-  T('get_access_grants', 'Access grants for one principal.', { principal: 'aidemo' }, ['principal'], { principal: 'aidemo', grants: [{ resource: 'portfolio', level: 'read' }] }),
-  T('open_ticket', 'Open an access-review ticket to revoke, grant, or flag for review. This changes data.', { title: 'Review Treasury Approver access', action: 'flag' }, ['title'], { ticket: 'tkt_0001', state: 'open' }, { write: true, hitl: 'hitl-open-ticket' }),
+  T('list_entitlements', 'Entitlements held by a person.', { user: 'carol.nguyen' }, ['user'], { user: { id: 'carol.nguyen', found: true }, entitlements: [{ resource: 'prod-db-primary', role: 'prod-db-admin' }, { resource: 'payments-api', role: 'payments-deployer' }] }),
+  T('who_has_role', 'People who hold a given role.', { role: 'prod-db-admin' }, ['role'], { role: 'prod-db-admin', holders: [{ user: 'alice.chen', resource: 'prod-db-primary' }, { user: 'carol.nguyen', resource: 'prod-db-primary' }] }),
+  T('get_access_grants', 'Every grant on one resource, with its tier and owner.', { resource: 'prod-db-primary' }, ['resource'], { resource: 'prod-db-primary', tier: 'critical', owner: 'alice.chen', grants: [{ user: 'alice.chen', role: 'prod-db-admin' }, { user: 'carol.nguyen', role: 'prod-db-admin' }] }),
+  T('open_ticket', 'Open an access-review ticket to revoke, grant, or flag for review. This changes data.', { user: 'carol.nguyen', resource: 'prod-db-primary', action: 'review', justification: 'Quarterly access review' }, ['user', 'resource', 'action', 'justification'], { ticket: 'tkt_0001', state: 'open' }, { write: true, hitl: 'hitl-open-ticket' }),
   T('get_portfolio_summary', 'Holdings and value of a portfolio.', { portfolio_id: 'pf_3301' }, ['portfolio_id'], { portfolio_id: 'pf_3301', positions: 12, value: 'invented sample' }),
   T('get_investment_accounts', 'Investment accounts on the profile.', { customer_id: 'cus_7781' }, ['customer_id'], { customer_id: 'cus_7781', accounts: ['inv_5520', 'inv_5521'] }),
   T('get_investment_balance', 'Current balance of an investment account.', { account_id: 'inv_5520' }, ['account_id'], { account_id: 'inv_5520', balance: 'invented sample', currency: 'USD' }),

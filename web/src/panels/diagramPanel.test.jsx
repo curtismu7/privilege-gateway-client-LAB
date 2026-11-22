@@ -78,7 +78,7 @@ describe("it follows the one walkthrough", () => {
   test.each([
     ["allowed", ["demo-all-tools", "list_entitlements", U], "verdict-allowed", ["e3", "e4"], ["e6", "e7", "e5"]],
     ["blocked", ["demo-blocked", "list_entitlements", U], "verdict-blocked", ["e6"], ["e3", "e4", "e5", "e7"]],
-    ["held", ["demo-all-tools", "open_ticket", { title: "Review access", action: "flag" }], "verdict-held", ["e7"], ["e3", "e4", "e5", "e6"]],
+    ["held", ["demo-all-tools", "open_ticket", { user: "carol.nguyen", resource: "prod-db-primary", action: "review", justification: "Quarterly access review" }], "verdict-held", ["e7"], ["e3", "e4", "e5", "e6"]],
     ["upstream", ["demo-all-tools", "list_entitlements", U, "upstream-error"], "verdict-upstream", ["e3", "e5"], ["e4", "e6", "e7"]],
   ])("a %s run marks its own outcome box in words and dims the arrows it did not take", async (id, args, outcome, taken, notTaken) => {
     const run = await realRun(...args);
