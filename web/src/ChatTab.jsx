@@ -47,7 +47,7 @@ function Steps({ steps, onShow }) {
         <li key={i} data-testid={`chat-step-${s.kind}`}>
           {s.kind === "discover"
             ? <span>Asked the gateway for this door's tools{s.run?.tools ? `: ${s.run.tools.length} listed` : ""}</span>
-            : <span>Called <code>{visible(s.tool)}</code> <code className="pgc-steps__args">{visible(JSON.stringify(s.args ?? {})).slice(0, 160)}</code>{s.labError ? ` — not sent: ${visible(s.labError)}` : ""}</span>}
+            : <span>{s.unlisted ? "Asked the gateway for a tool it did not list: " : "Called "}<code>{visible(s.tool)}</code> <code className="pgc-steps__args">{visible(JSON.stringify(s.args ?? {})).slice(0, 160)}</code>{s.labError ? ` — not sent: ${visible(s.labError)}` : ""}</span>}
           <Chip run={s.run} onShow={onShow} />
         </li>
       ))}

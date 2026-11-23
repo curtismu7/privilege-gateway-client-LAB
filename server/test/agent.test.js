@@ -234,6 +234,48 @@ test('A schema with $defs keeps them for the model, and a duplicate tool name is
   assert.equal(modelToolFrom({ name: 'x', inputSchema: { properties: { f: { $ref: '#/definitions/F' } }, definitions: { F: { type: 'string' } } } }).input_schema.definitions.F.type, 'string');
 });
 
+test('call_unlisted_tool: the agent can ask for a tool the gateway did not list, and the gateway refuses it', async () => {
+  const model = await start({ replies: [msg([toolUse('call_unlisted_tool', { name: 'sensitive_holdings', arguments: { account_id: 'inv_5520' } })], 'tool_use'), msg([text('The gateway refused sensitive_holdings.')])] });
+  try {
+    const { body: r } = await ask('call sensitive_holdings for inv_5520', 'demo-some-tools');
+    assert.ok(model.seen[0].body.tools.some((t) => t.name === 'call_unlisted_tool'), 'the lab offers its one extra tool');
+    assert.ok(!model.seen[0].body.tools.some((t) => t.name === 'sensitive_holdings'), 'the refused tool itself is not offered');
+    const call = r.steps.find((st) => st.kind === 'call');
+    assert.equal(call.tool, 'sensitive_holdings');
+    assert.equal(call.unlisted, true);
+    assert.deepEqual(call.args, { account_id: 'inv_5520' });
+    assert.equal(call.run.verdict.id, 'blocked', 'the gateway decided');
+    assert.equal(model.seen[1].body.messages.at(-1).content[0].is_error, true);
+  } finally { await stop(); }
+});
+
+test('call_unlisted_tool with a bad name is not sent: the lab says why and makes no run', async () => {
+  await start({ replies: [msg([toolUse('call_unlisted_tool', { name: 'not a tool!' })], 'tool_use'), msg([text('That name is not valid.')])] });
+  try {
+    const { body: r } = await ask('call not a tool!');
+    const call = r.steps.find((st) => st.kind === 'call');
+    assert.equal(call.run, null);
+    assert.match(call.labError, /tool must be/);
+    const runs = (await (await fetch(`${lab.base}/api/runs`)).json()).runs;
+    assert.deepEqual(runs.map((x) => x.action), ['discover']);
+  } finally { await stop(); }
+});
+
+test('A tools/list reply over 256 KB is an honest Upstream error, so no form is shown empty and the agent calls no model', async () => {
+  const huge = (tools) => tools.map((t) => ({ ...t, inputSchema: { ...t.inputSchema, description: 'x'.repeat(20000) } }));
+  const model = await start({ stubOpts: { listTools: huge }, replies: [msg([text('never')])] });
+  try {
+    const { body: d } = await post('/api/discover', { door: ALL });
+    assert.equal(d.verdict.id, 'upstream');
+    assert.match(d.verdict.sentence, /too large/);
+    assert.equal(d.tools, null, 'no tool list, so no form at all');
+    const { body: r } = await ask('hello');
+    assert.equal(r.stopped, 'discovery-refused');
+    assert.match(r.reply, /too large/);
+    assert.equal(model.seen.length, 0);
+  } finally { await stop(); }
+});
+
 test('Hostile history is refused before any call', async () => {
   const model = await start();
   try {

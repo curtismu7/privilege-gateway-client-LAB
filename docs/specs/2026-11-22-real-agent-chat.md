@@ -58,7 +58,7 @@ Netguard zero-outbound in Mock, write-only keys, pi.flow login, vendored files (
   - 375 px: no horizontal overflow; no console errors.
 - Independent review (`/code-review high`, 10 findings): fixed 1-3 (history: earlier replies cut to 2,000 chars, at most 40 messages, a UTF-8 byte budget), 5 ($defs/definitions kept, duplicate tool names offered once), 7 (90 s turn deadline), 8 (a send while another call runs says "Not sent" and is kept out of history; Send is disabled while the lab is busy), 9 (the model-down test now asserts no tool run), 10 (one agent config). Not fixed, below.
 
-## Follow-ups (not in this change)
-- Stories in Real still send the Mock sample arguments for a story's tool call (`runSpec` in `useLab.js`); a story would need a discovery first to use the real schema.
-- A `tools/list` reply over 256 KB is replaced by a note in the capture, so every Real tool form would be `{}` with no warning.
-- In Real the agent cannot show a refused call on `demo-some-tools`, because the real gateway does not list refused tools; the Tools tab's "run by name" still shows a refusal.
+## Follow-ups (done 2026-11-22, second change)
+- Stories in Real: `runSpec` (useLab.js) discovers the door first and sends the tool's listed arguments; a tool the gateway does not list (a story about a refusal) keeps the catalog sample, and the gateway decides. Mock is unchanged. Test: `useLab.test.jsx`.
+- A `tools/list` reply over 256 KB: no change needed. The capture replaces it with a note, so the discovery is already an honest "Upstream error ... too large" (no empty forms), and the agent says so without a model call. A test now pins that.
+- Refusals in the chat (owner chose "call-by-name tool"): the agent gets one extra tool, `call_unlisted_tool(name, arguments)`, for when the user names a tool it was not offered. The lab sends that call to the gateway like the Tools tab's "run by name"; the gateway decides (on `demo-some-tools` it refuses), and the chat labels the step "a tool it did not list". The refused tool itself is never offered.

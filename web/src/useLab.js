@@ -199,7 +199,14 @@ export function useLab({ api = realApi } = {}) {
     if (persona && info?.source === "mock" && authConfig?.mock?.available && !me) {
       try { await signInMock(persona); } catch { /* the run does not depend on a page login */ }
     }
-    const args = spec.tool ? info?.catalog.find((t) => t.name === spec.tool)?.args ?? {} : undefined;
+    let args = spec.tool ? info?.catalog.find((t) => t.name === spec.tool)?.args ?? {} : undefined;
+    // Real: a story's call uses the tool's own listed arguments, so the door is discovered first (the Mock samples may name other arguments).
+    // A tool the gateway does not list (a story about a refusal) keeps the catalog sample; the gateway decides either way.
+    if (spec.action === "call" && info?.source === "real") {
+      const listed = await exec("discover", undefined, undefined, "none", spec.door);
+      const tool = listed?.tools?.find((t) => t.name === spec.tool);
+      if (tool) args = tool.args;
+    }
     return exec(spec.action === "call" ? "call" : "discover", spec.tool, args, spec.scenario ?? "none", spec.door);
   }, [clearRuns, exec, info, authConfig, me, signInMock]);
 

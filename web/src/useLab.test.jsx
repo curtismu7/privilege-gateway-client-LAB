@@ -177,4 +177,28 @@ describe("useLab", () => {
     await act(async () => { await lab().signOut(); });
     expect(lab().me).toBeNull();
   });
+
+  test("a story's call in Real discovers the door first and sends the tool's listed arguments; Mock sends the catalog sample", async () => {
+    const { createLab } = await import("../../server/src/lab.js");
+    const catalog = (await import("../../server/src/vendor/hop-catalog.json")).default;
+    const m = createLab({ env: { MODE: "mock" }, version: "9.9.9", catalog });
+    const disc = await m.discover({ door: "demo-all-tools" }, {});
+    const realDisc = { ...disc, source: "real", simulated: false, tools: disc.tools.map((t) => (t.name === "get_access_grants" ? { ...t, args: { resource: "billing-db" } } : t)) };
+    const sent = [];
+    const call = await m.call({ door: "demo-all-tools", tool: "get_access_grants", args: { resource: "billing-db" } }, {});
+    const env = { PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+    const real = await boot({ env, hooks: { "/api/discover": () => realDisc, "/api/call": (b) => { sent.push(b); return call; } } });
+    expect(real.lab().info.source).toBe("real");
+    await act(async () => { await real.lab().runSpec({ door: "demo-all-tools", action: "call", tool: "get_access_grants" }); });
+    expect(real.calls.map((c) => c.path).filter((p) => p === "/api/discover" || p === "/api/call")).toEqual(["/api/discover", "/api/call"]);
+    expect(sent[0].arguments).toEqual({ resource: "billing-db" });
+    // A tool the gateway did not list keeps the catalog sample.
+    await act(async () => { await real.lab().runSpec({ door: "demo-all-tools", action: "call", tool: "sensitive_tax_record" }); });
+    expect(sent[1].arguments).toEqual(real.lab().info.catalog.find((t) => t.name === "sensitive_tax_record").args);
+
+    const mock = await boot();
+    await act(async () => { await mock.lab().runSpec({ door: "demo-all-tools", action: "call", tool: "get_access_grants" }); });
+    expect(mock.calls.filter((c) => c.path === "/api/discover")).toHaveLength(0);
+    expect(mock.calls.find((c) => c.path === "/api/call").body.arguments).toEqual(mock.lab().info.catalog.find((t) => t.name === "get_access_grants").args);
+  });
 });
