@@ -401,6 +401,20 @@ describe("Real agent chat", () => {
     expect(sent[1].messages.map((m) => m.role)).toEqual(["user", "assistant", "user"]);
   });
 
+  test("a call for a tool the gateway did not list is labelled so, with the gateway's verdict", async () => {
+    const { disc, blocked } = await realShapedRuns();
+    const reply = { source: "real", simulated: false, model: "claude-sonnet-5-5", by: "model", stopped: "done", reply: "The gateway refused it.",
+      steps: [{ kind: "discover", run: disc }, { kind: "call", tool: "sensitive_holdings", args: { account_id: "x" }, run: blocked, unlisted: true }] };
+    await mount({ env: AGENT_ENV, hooks: { "/api/agent": () => reply } });
+    await toReal();
+    click("tab-chat");
+    fireEvent.change(tid("chat-input"), { target: { value: "call sensitive_holdings" } });
+    click("chat-send");
+    await screen.findByText(/The gateway refused it/);
+    expect(screen.getAllByTestId("chat-step-call")[0]).toHaveTextContent(/did not list: sensitive_holdings/);
+    expect(screen.getAllByTestId("chat-step-chip")[1]).toHaveAttribute("data-verdict", "blocked");
+  });
+
   test("a lab failure is worded in the chat as the lab's, and is not sent back as history", async () => {
     const sent = [];
     await mount({ env: AGENT_ENV, hooks: { "/api/agent": (body) => { sent.push(body); throw Object.assign(new Error("The real agent runs in Real only."), { status: 409, code: "agent_real_only" }); } } });
