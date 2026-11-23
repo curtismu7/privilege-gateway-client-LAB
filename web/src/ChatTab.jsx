@@ -174,7 +174,7 @@ function RealChat({ lab, stepper }) {
   return (
     <div data-testid="chat-panel-real">
       <p className="pgc-note pgc-note--real" data-testid="chat-real-note">
-        <strong>REAL agent</strong> ({visible(agent.model ?? "Claude")}). Each message calls the model through the Anthropic API, billed to the key in this lab's .env. Every tool it picks goes to the real gateway with this door's agent key, and the gateway decides.
+        <strong>REAL agent</strong> ({visible(agent.model ?? "Claude")}). {agent.via === "llm-gateway" ? "Each message calls the model through the Privilege LLM gateway, with this lab's llm-scoped agent key." : "Each message calls the model through the Anthropic API, billed to the key in this lab's .env."} Every tool it picks goes to the real gateway with this door's agent key, and the gateway decides.
       </p>
       {msgs.length === 0 ? (
         <div className="pgc-empty pgc-empty--chat"><h3>Ask the agent to do something with the tools on {visible(lab.door)}</h3><p>Try: “who has access to prod-db-primary?”, “what entitlements does carol.nguyen have?” or “what can you do here?”.</p></div>

@@ -4,8 +4,10 @@ Spec and decisions: `docs/specs/2026-11-23-se-hosted-real.md`. This is NOT the l
 in Real, behind a PingOne sign-in. Colleagues use it in a browser; nobody else runs it.
 
 ## What `PGC_HOSTED=1` changes (set only by `k8s/deployment.yaml`)
-- Every Real discover, call, story run and agent message answers 401 `signin_required` until the visitor signs in (Sign in, in the left rail:
-  the pi.flow sign-in against the PingOne environment the Secret names). Mock needs no sign-in and calls nothing.
+- Every Real discover, call, story run and agent message answers 401 `signin_required` until the visitor signs in. **Sign in is the redirect
+  sign-in** (owner exception to rule 16, 2026-11-23): the browser goes to PingOne and back to `https://<host>/callback`, so a PingOne session
+  the browser already has (from another hosted demo in that environment) signs the visitor in with no prompt. One use per state, PKCE, a
+  public client; a failure returns to the page with a plain reason. The local lab keeps the pi.flow dialog. Mock needs no sign-in and calls nothing.
 - One workspace per browser (cookie `pgc_ws`; `X-Workspace` and `?workspace=` are ignored), least recently used evicted at the cap
   (`PGC_MAX_WORKSPACES`, default 200), so visitors never share a run log, a trace or a pending sign-in. Cookies are `Secure`.
 - The mode is fixed (Real): `POST /api/mode` answers 409 `mode_fixed`, because one shared mode would let any visitor switch everyone.

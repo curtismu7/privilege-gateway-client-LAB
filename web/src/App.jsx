@@ -15,7 +15,7 @@ import TalkTrack from "./TalkTrack.jsx";
 import { seedTalkPlace, talkPlace } from "./panels/talkPlace.js";
 import { releaseDialogFocus } from "./panels/autoFocus.js";
 import { useContent } from "./useContent.js";
-import { workspace } from "./api.js";
+import { workspace, redirectSignInUrl } from "./api.js";
 import { badStoryParam, storyBlock, storyIdFromSearch } from "./storyView.js";
 import EvidenceTabs from "./panels/EvidenceTabs.jsx";
 import { useRunStepper } from "./panels/useRunStepper.js";
@@ -23,6 +23,15 @@ import { useLab } from "./useLab.js";
 import { useTheme } from "./useTheme.js";
 import { cardFor, runLook } from "./verdictView.js";
 
+// Why a redirect sign-in came back without signing in, in words (the code comes from this lab's own /callback, never from PingOne's page).
+const SIGNIN_ERROR = {
+  signin_refused: "PingOne refused the sign-in. If you are not in the hosted-access group, ask the lab owner for access.",
+  state_mismatch: "That sign-in answer did not match a sign-in started here. Use Sign in again.",
+  no_run: "That sign-in was already used or not started here. Use Sign in again.",
+  run_expired: "The sign-in took longer than 5 minutes. Use Sign in again.",
+  token_refused: "PingOne did not accept the sign-in at the last step. Use Sign in again.",
+  userinfo_failed: "PingOne did not say who signed in. Use Sign in again.",
+};
 const TALK_KEY = "pgc.panel.talk";
 // Agent chat is first and the tab the lab opens on (owner 2026-11-23): the demo starts by talking to the agent.
 const TABS = [
@@ -171,6 +180,26 @@ export default function App() {
   const brand = content.customer ? { name: content.customer.name, tagline: content.customer.tagline } : null;
   useEffect(() => { document.title = brand?.name ?? DEFAULT_NAME; }, [brand?.name]);
 
+  // Sign in. The hosted instance uses the redirect sign-in (owner 2026-11-23): the browser goes to PingOne and comes back signed in, so an
+  // existing PingOne session needs no prompt. Everywhere else it is the pi.flow dialog. A failed redirect comes back with ?signin_error=<code>.
+  const beginSignIn = () => {
+    if (lab.info?.source === "real" && lab.authConfig?.real?.flow === "redirect") {
+      window.location.assign(redirectSignInUrl(window.location.pathname));
+      return;
+    }
+    setSigninOpen(true);
+  };
+  const [signinError] = useState(() => {
+    try {
+      const u = new URL(window.location.href);
+      const code = u.searchParams.get("signin_error");
+      if (!code) return null;
+      u.searchParams.delete("signin_error");
+      window.history.replaceState(null, "", u);
+      return code;
+    } catch { return null; }
+  });
+
   // Stories (rule 10): ?story=S0n opens one and starts its run; the picker does the same. The URL follows the choice so a link can be shared.
   const [activeStory, setActiveStory] = useState(null);
   const [urlNote, setUrlNote] = useState(workspace.problem);
@@ -236,7 +265,7 @@ export default function App() {
       talkTrack={{ active: talkOpen, onToggle: toggleTalk }}
       onReset={lab.info ? resetAll : undefined}
       showSignIn={Boolean(signInAvailable)}
-      signedIn={{ subject: lab.me?.name ?? lab.me?.username ?? lab.me?.sub ?? null, onSignIn: () => setSigninOpen(true), onSignOut: lab.signOut }}
+      signedIn={{ subject: lab.me?.name ?? lab.me?.username ?? lab.me?.sub ?? null, onSignIn: beginSignIn, onSignOut: lab.signOut }}
     >
       <ShelfLink />
     </TopMenu>
@@ -283,11 +312,14 @@ export default function App() {
     <Shell topMenu={topMenu} brand={brand}>
       <SimulationBanner source={source} origin={source === "real" ? lab.info.gateway?.origin : null} />
       <ModeStatus info={lab.info} signedIn={lab.me?.source === "real-login"} />
+      {signinError && (
+        <p className="pgc-note pgc-note--hold" role="alert" data-testid="signin-error">{SIGNIN_ERROR[signinError] ?? "The sign-in did not complete. Try Sign in again."}</p>
+      )}
       {lab.modeError && (
         <p className="pgc-note pgc-note--hold" role="alert" data-testid="mode-error">{lab.modeError.message}</p>
       )}
       <div className="pgc-layout" ref={layoutRef} style={railW != null ? { "--rail-w": `${railW}px` } : undefined}>
-        <IdentityRail lab={lab} onSignIn={() => setSigninOpen(true)} open={railOpen} onToggle={() => setRailOpen((o) => !o)} />
+        <IdentityRail lab={lab} onSignIn={beginSignIn} open={railOpen} onToggle={() => setRailOpen((o) => !o)} />
         <div
           className="pgc-rail-handle"
           role="separator"

@@ -214,3 +214,83 @@ test('the pending sign-in store is capped (oldest out) and expires', async () =>
   s.set('d', 4);
   assert.equal(s.size, 1, 'expired runs are dropped on the next start');
 });
+
+// ---- The redirect sign-in (hosted, owner 2026-11-23) ------------------------------------------------------------------------
+const ENV_ID = ['aaaaaaaa', 'bbbb', '4ccc', '8ddd', 'eeeeeeeeeeee'].join('-'); // fake, built at run time
+const LOGIN = { PGC_PINGONE_ENVIRONMENT_ID: ENV_ID, PGC_PINGONE_REGION: 'com', PGC_USER_CLIENT_ID: 'test-client-0001', PGC_USER_REDIRECT_URI: 'https://lab.example/callback' };
+// A stub of PingOne's token and userinfo endpoints: the only calls the lab makes after the browser comes back.
+function pingOneStub({ tokenOk = true } = {}) {
+  const calls = [];
+  const fetchImpl = async (url, init = {}) => {
+    const u = new URL(String(url)); calls.push({ method: init.method ?? 'GET', path: u.pathname, body: String(init.body ?? '') });
+    const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    if (u.pathname.endsWith('/as/token')) return tokenOk ? json(200, { access_token: 'TESTONLY-access-token', token_type: 'Bearer' }) : json(400, { error: 'invalid_grant' });
+    if (u.pathname.endsWith('/as/userinfo')) return json(200, { sub: 'user-sso-1', name: 'Pat Example', preferred_username: 'pat', email: 'pat@example.com' });
+    return json(404, {});
+  };
+  return { fetchImpl, calls };
+}
+const noFollow = (b, path) => fetch(`${lab.base}${path}`, { redirect: 'manual', headers: { cookie: [...b.jar].map(([k, v]) => `${k}=${v}`).join('; ') } }).then((r) => { for (const c of r.headers.getSetCookie()) { const [kv] = c.split(';'); const i = kv.indexOf('='); b.jar.set(kv.slice(0, i), kv.slice(i + 1)); } return r; });
+
+test('hosted redirect sign-in: start sends the browser to PingOne with PKCE; the callback signs it in and returns to the page; Real then works', async () => {
+  const p = pingOneStub();
+  const gw = await startStubGateway({ keys: TEST_KEYS });
+  lab = await startLab({ env: realEnv(gw.origin, { ...HOSTED, ...LOGIN }), fetchImpl: p.fetchImpl });
+  try {
+    const b = browser();
+    const cfg = await (await b.get('/api/auth/config')).json();
+    assert.equal(cfg.real.flow, 'redirect');
+    const start = await noFollow(b, '/api/auth/redirect/start?return=' + encodeURIComponent('/privilege-gateway-client/'));
+    assert.equal(start.status, 302);
+    const to = new URL(start.headers.get('location'));
+    assert.equal(to.origin, 'https://auth.pingone.com');
+    assert.equal(to.pathname, `/${ENV_ID}/as/authorize`);
+    for (const k of ['client_id', 'redirect_uri', 'state', 'nonce', 'code_challenge']) assert.ok(to.searchParams.get(k), k);
+    assert.equal(to.searchParams.get('code_challenge_method'), 'S256');
+    assert.equal(to.searchParams.get('response_mode'), null, 'a real redirect, not pi.flow');
+    assert.equal(to.searchParams.get('redirect_uri'), 'https://lab.example/callback');
+    // PingOne sends the browser back with a code and the state.
+    const back = await noFollow(b, `/callback?code=TESTONLY-code&state=${encodeURIComponent(to.searchParams.get('state'))}`);
+    assert.equal(back.status, 302);
+    assert.equal(back.headers.get('location'), '/privilege-gateway-client/');
+    assert.deepEqual(p.calls.map((c) => `${c.method} ${c.path.split('/').slice(-2).join('/')}`), ['POST as/token', 'GET as/userinfo']);
+    assert.match(p.calls[0].body, /code_verifier=/);
+    const me = (await (await b.get('/api/session')).json()).me;
+    assert.equal(me.source, 'real-login'); assert.equal(me.sub, 'user-sso-1');
+    assert.equal((await b.post('/api/discover', { door: ALL })).status, 200, 'Real works once signed in');
+    // The same state cannot be used twice.
+    const again = await noFollow(b, `/callback?code=TESTONLY-code&state=${encodeURIComponent(to.searchParams.get('state'))}`);
+    assert.match(again.headers.get('location'), /signin_error=no_run/);
+  } finally { await lab.close(); await gw.close(); lab = null; }
+});
+
+test('hosted redirect sign-in: a refusal, a forged state and a failed token step come back to the page with a reason, and nobody is signed in', async () => {
+  const p = pingOneStub({ tokenOk: false });
+  const gw = await startStubGateway({ keys: TEST_KEYS });
+  lab = await startLab({ env: realEnv(gw.origin, { ...HOSTED, ...LOGIN }), fetchImpl: p.fetchImpl });
+  try {
+    const b = browser();
+    const state = () => noFollow(b, '/api/auth/redirect/start').then((r) => new URL(r.headers.get('location')).searchParams.get('state'));
+    const refused = await noFollow(b, `/callback?error=access_denied&state=${encodeURIComponent(await state())}`);
+    assert.equal(refused.headers.get('location'), '/?signin_error=signin_refused');
+    const forged = await noFollow(b, '/callback?code=x&state=not-a-state-we-made');
+    assert.equal(forged.headers.get('location'), '/?signin_error=no_run');
+    const token = await noFollow(b, `/callback?code=x&state=${encodeURIComponent(await state())}`);
+    assert.equal(token.headers.get('location'), '/?signin_error=token_refused');
+    assert.equal((await (await b.get('/api/session')).json()).me, null);
+    // A return path that is not a plain path on this site is replaced by "/".
+    const evil = await noFollow(b, '/api/auth/redirect/start?return=' + encodeURIComponent('//evil.example/x'));
+    const st = new URL(evil.headers.get('location')).searchParams.get('state');
+    assert.equal((await noFollow(b, `/callback?error=x&state=${encodeURIComponent(st)}`)).headers.get('location'), '/?signin_error=signin_refused');
+  } finally { await lab.close(); await gw.close(); lab = null; }
+});
+
+test('not hosted: no redirect sign-in route and the sign-in stays pi.flow', async () => {
+  const gw = await startStubGateway({ keys: TEST_KEYS });
+  lab = await startLab({ env: realEnv(gw.origin, { ...LOGIN }) });
+  try {
+    assert.equal((await (await fetch(`${lab.base}/api/auth/config`)).json()).real.flow, 'pi.flow');
+    assert.equal((await fetch(`${lab.base}/api/auth/redirect/start`, { redirect: 'manual' })).status, 404);
+  } finally { await lab.close(); await gw.close(); lab = null; }
+});
+

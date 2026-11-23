@@ -167,9 +167,14 @@ export function createPingOneLogin({ cfg, fetchImpl, guard = null, now = Date.no
     if (typeof answer.state === 'string' && answer.state !== run.state) throw new LoginError(502, 'state_mismatch', 'The sign-in answer did not carry this sign-in\'s state.');
     if (answer.error) throw new LoginError(401, 'signin_refused', 'PingOne refused the sign-in.', String(answer.error).slice(0, 64).replace(/[^\w.-]/g, '?'));
     if (typeof answer.code !== 'string' || !answer.code) throw new LoginError(502, 'no_code', 'The completed sign-in carries no authorization code.');
+    return { state: 'signed_in', claims: await exchange(answer.code, run.codes.verifier) };
+  }
+
+  // The code for tokens (a public client: PKCE, no secret), then userinfo for the claims the page shows. Shared by pi.flow and the redirect.
+  async function exchange(code, verifier) {
     const tokens = await call(`${cfg.base}/as/token`, {
       method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
-      body: new URLSearchParams({ grant_type: 'authorization_code', code: answer.code, redirect_uri: cfg.redirectUri, code_verifier: run.codes.verifier, client_id: cfg.clientId }).toString(),
+      body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: cfg.redirectUri, code_verifier: verifier, client_id: cfg.clientId }).toString(),
     });
     const accessToken = tokens.ok && typeof tokens.json?.access_token === 'string' ? tokens.json.access_token : null;
     if (!accessToken) throw new LoginError(502, 'token_refused', 'The token endpoint did not accept the sign-in.');
@@ -177,7 +182,7 @@ export function createPingOneLogin({ cfg, fetchImpl, guard = null, now = Date.no
     const claims = info.ok ? claimsFrom(info.json) : null;
     if (!claims) throw new LoginError(502, 'userinfo_failed', 'PingOne did not return who signed in.');
     // The access token has done its one job. It is not kept, returned or logged.
-    return { state: 'signed_in', claims };
+    return claims;
   }
 
   const stepPost = async (run, contentType, payload) => {
@@ -188,6 +193,27 @@ export function createPingOneLogin({ cfg, fetchImpl, guard = null, now = Date.no
   const badCredentials = (json) => Array.isArray(json?.details) && json.details.some((d) => d?.code === 'INVALID_CREDENTIALS');
 
   return {
+    // The redirect sign-in (owner 2026-11-23, the hosted instance only): the browser goes to PingOne's own sign-in and comes back to the
+    // redirect URI, so a PingOne session the browser already has signs the person in with no prompt (one login across the hosted demos).
+    // -> { url, run } ; the run (state, nonce, PKCE verifier) stays on the server, keyed by its state.
+    redirectStart() {
+      const codes = pkcePair();
+      const state = crypto.randomBytes(24).toString('base64url');
+      const nonce = crypto.randomBytes(24).toString('base64url');
+      const q = new URLSearchParams({ response_type: 'code', client_id: cfg.clientId, redirect_uri: cfg.redirectUri, scope: cfg.scope, state, nonce, code_challenge: codes.challenge, code_challenge_method: 'S256' });
+      return { url: `${cfg.base}/as/authorize?${q}`, run: { codes, state, nonce, expiresAt: now() + RUN_TTL_MS } };
+    },
+
+    // The browser came back to the redirect URI with ?code&state (or ?error). -> { state: 'signed_in', claims }
+    async redirectFinish(run, { code, state, error } = {}) {
+      if (!run?.state) throw new LoginError(409, 'no_run', 'This sign-in was not started here, or it was already used. Sign in again.');
+      if (run.expiresAt <= now()) throw new LoginError(409, 'run_expired', 'The sign-in expired after 5 minutes. Sign in again.');
+      if (typeof state !== 'string' || state !== run.state) throw new LoginError(400, 'state_mismatch', 'The sign-in answer did not carry this sign-in\'s state.');
+      if (error) throw new LoginError(401, 'signin_refused', 'PingOne refused the sign-in.', String(error).slice(0, 64).replace(/[^\w.-]/g, '?'));
+      if (typeof code !== 'string' || !code || code.length > 2048) throw new LoginError(400, 'no_code', 'The sign-in answer carries no authorization code.');
+      return { state: 'signed_in', claims: await exchange(code, run.codes.verifier) };
+    },
+
     // Opens a flow. The run (flow id, PKCE verifier, cookies) stays on the server; the page gets only view().
     async start() {
       const codes = pkcePair();

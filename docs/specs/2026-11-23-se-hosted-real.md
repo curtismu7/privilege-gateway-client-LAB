@@ -42,6 +42,14 @@ The rollout model allows a hosted Real instance only as "a Ping-operated real in
 - Reset on hosted clears only the caller's workspace.
 - The daily agent cap counts only turns that reached the model; gateway-style model ids are kept; the `deploy.sh` tag check reads the last path segment; stale comments and the CLAUDE.md line fixed; a signed-in web test added.
 
+## One login: the redirect sign-in (owner, 2026-11-23)
+The owner asked for one login. pi.flow cannot reuse the browser's PingOne session, so the hosted instance uses the standard redirect sign-in
+(an owner exception to rulebook rule 16, recorded there): `GET /api/auth/redirect/start` keeps state, nonce and the PKCE verifier on the server
+(capped, 5-minute expiry, single use) and sends the browser to PingOne's authorize; `GET /callback` checks the state, exchanges the code (public
+client, PKCE) and reads userinfo, sets the session cookie for that browser's workspace and returns to the page; any failure returns with
+`?signin_error=<code>`, which the page words. The local lab keeps pi.flow. Tests: start/callback/replay, refusal, forged state, token failure,
+return-path guard, not-hosted has no route.
+
 ## Status of the outside pieces (2026-11-23)
 - Sign-in app `privilege-gateway-client-hosted` created in the PingOne environment where the hosted-access colleagues are (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in `~/.config/demo-kit/pgc-hosted.env`.
 - Keys: waiting on the Pingid-privilege rebuild (new tenant). The rebuild session will create the three door keys, their grants and `pgc-agent-llm` after the gateway cutover.

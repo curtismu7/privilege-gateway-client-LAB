@@ -492,6 +492,21 @@ describe("Real agent chat", () => {
     expect(tid("signin-why")).toHaveTextContent(/do not need one/);
   });
 
+  test("the Real agent note names the Privilege LLM gateway when the agent goes through it", async () => {
+    await mount({ env: { ...REAL_ENV, PGC_LLM_GATEWAY_URL: "https://llm-gw.example", PGC_LLM_VIRTUAL_KEY: "test-only-llm-key", PGC_AGENT_MODEL: "claude-sonnet-4-5" } });
+    await toReal();
+    click("tab-chat");
+    expect(tid("chat-real-note")).toHaveTextContent(/through the Privilege LLM gateway/);
+    expect(tid("chat-real-note")).not.toHaveTextContent(/Anthropic API/);
+  });
+
+  test("hosted: a redirect sign-in that came back with an error says why in words, and the error leaves the address", async () => {
+    window.history.replaceState(null, "", "/?signin_error=signin_refused");
+    await mount({ env: AGENT_ENV });
+    expect(tid("signin-error")).toHaveTextContent(/PingOne refused the sign-in/);
+    expect(window.location.search).toBe("");
+  });
+
   test("hosted: a visitor with a Real page login sees no sign-in note in Real", async () => {
     const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
     await mount({ env: AGENT_ENV, session: me, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: true } }) } });

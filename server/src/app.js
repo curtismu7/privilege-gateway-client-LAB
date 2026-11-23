@@ -81,11 +81,32 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
     res.status(401).json({ error: 'signin_required', message: 'Sign in to run the Real lab (Sign in, in the left rail). Mock needs no sign-in.' });
   });
   mountLabRoutes(api, lab, { settings, customer, auth });
-  mountAuthRoutes(api, lab, auth);
+  const authFlow = mountAuthRoutes(api, lab, auth);
   // Only SHELF_URL is passed on: the shared shelf helper would otherwise fall back to a settings file outside this repo (rule: per-lab .env only).
   mountShelfRoute(api, { env: { SHELF_URL: env.SHELF_URL } });
   api.use((_req, res) => res.status(404).json({ error: 'not_found', message: 'no such API route' }));
   app.use('/api', api);
+
+  // Hosted: the redirect sign-in comes back here (the redirect URI is https://<host>/callback). One use per state; any failure goes back to
+  // the page with ?signin_error=<code> so the page can say why, and never shows a code, a token or the state.
+  if (settings.hosted) {
+    app.get('/callback', async (req, res) => {
+      noStore(res);
+      const state = typeof req.query.state === 'string' ? req.query.state : '';
+      const entry = state ? authFlow.redirectRuns.get(state) : undefined;
+      if (state) authFlow.redirectRuns.delete(state);
+      const back = (ret, err) => res.redirect(302, err ? `${ret}${ret.includes('?') ? '&' : '?'}signin_error=${encodeURIComponent(err)}` : ret);
+      const ret = entry?.ret ?? '/';
+      try {
+        const out = await authFlow.loginApi().redirectFinish(entry?.run, { code: req.query.code, state, error: req.query.error });
+        const maxAge = Math.floor(authFlow.settings.sessionTtlMs / 1000);
+        res.append('set-cookie', authFlow.sessions.cookie(authFlow.sessions.issueClaims(out.claims, entry.workspace), maxAge, entry.workspace));
+        back(ret, null);
+      } catch (e) {
+        back(ret, e instanceof LoginError ? e.code : 'signin_failed');
+      }
+    });
+  }
 
   if (fs.existsSync(path.join(webDist, 'index.html'))) {
     app.use(express.static(webDist));
@@ -197,7 +218,7 @@ function mountAuthRoutes(api, lab, auth) {
     res.json({
       workspace: req.workspaceId, source: lab.mode.get(), idp: settings.idp || null,
       mock: { enabled: settings.mockSignin, available: settings.mockSignin && !mockRefusal(req), refusal: settings.mockSignin ? mockRefusal(req) : 'disabled' },
-      real: { flow: 'pi.flow', configured: lab.login.ok, problems: lab.login.problems },
+      real: { flow: settings.hosted ? 'redirect' : 'pi.flow', configured: lab.login.ok, problems: lab.login.problems },
     });
   });
   // "Nobody is signed in" is a normal 200 with me: null, so the browser console stays clean.
@@ -230,6 +251,21 @@ function mountAuthRoutes(api, lab, auth) {
     if (!lab.login.ok) { res.status(409).json({ error: 'login_not_configured', message: `Page login is not configured: ${lab.login.problems.join('; ')}. Set them in this lab's own .env (see .env.example), then restart.` }); return false; }
     return true;
   };
+  // Hosted: the redirect sign-in (owner 2026-11-23). The browser goes to PingOne and back to /callback, so an existing PingOne session signs the
+  // person in with no prompt. The run (state, nonce, PKCE verifier) stays here, keyed by its state, single use, capped and expired.
+  const redirectRuns = createLoginRunStore();
+  const RETURN_PATH = /^\/(?!\/)[A-Za-z0-9/_.-]{0,200}$/;
+  if (settings.hosted) {
+    api.get('/auth/redirect/start', (req, res) => {
+      noStore(res);
+      if (!liveOk(res)) return;
+      const ret = typeof req.query.return === 'string' && RETURN_PATH.test(req.query.return) ? req.query.return : '/';
+      const { url, run } = loginApi().redirectStart();
+      redirectRuns.set(run.state, { run, workspace: req.workspaceId, ret });
+      res.redirect(302, url);
+    });
+  }
+
   api.post('/auth/live/start', async (req, res) => {
     noStore(res);
     if (!liveOk(res)) return;
@@ -253,4 +289,5 @@ function mountAuthRoutes(api, lab, auth) {
       throw e;
     }
   });
+  return { loginApi, redirectRuns, sessions, settings };
 }
