@@ -52,6 +52,20 @@ export function decideLogin(input, { mode, loginBase = null } = {}) {
   return { allow: true, route: 'login' };
 }
 
+// Real agent chat talks to the Anthropic API, a third origin. It has its own allowance, still one origin: https, no credentials in
+// the URL, exactly MODEL_ORIGIN, and only when the lab is in Real and the owner set the agent's key. Mock never calls a model.
+export const MODEL_ORIGIN = 'https://api.anthropic.com';
+export function decideModel(input, { mode, configured = false } = {}) {
+  const url = parse(input);
+  if (!url) return { allow: false, code: 'bad_url', reason: 'Not a valid URL.' };
+  if (mode !== 'real') return { allow: false, code: 'blocked_mock', reason: 'The real agent calls a model and exists in Real only. The Mock chat calls no model.' };
+  if (!configured) return { allow: false, code: 'agent_not_configured', reason: 'The real agent is not configured, so no model origin is allowed.' };
+  if (url.protocol !== 'https:') return { allow: false, code: 'blocked_scheme', reason: 'The agent model allows https only.' };
+  if (url.username || url.password) return { allow: false, code: 'blocked_credentials', reason: 'A URL carrying credentials is refused.' };
+  if (url.origin !== MODEL_ORIGIN) return { allow: false, code: 'blocked_origin', reason: 'Only the Anthropic API origin may be reached by the agent.' };
+  return { allow: true, route: 'model' };
+}
+
 // Pure self-test over synthetic inputs: no network call. Used by the doctor, /api/health and the tests.
 export function selfTest() {
   const REAL = 'https://gateway.example';
@@ -86,13 +100,21 @@ export function selfTest() {
     const got = v.allow ? 'allow' : v.code;
     return { name, ok: got === expect, got, expect };
   };
-  const checks = [...cases.map(run(decide)), ...loginCases.map(run(decideLogin))];
+  const modelCases = [
+    ['agent model allows the Anthropic API in Real when configured', `${MODEL_ORIGIN}/v1/messages`, { mode: 'real', configured: true }, 'allow'],
+    ['agent model refuses every URL in Mock', `${MODEL_ORIGIN}/v1/messages`, { mode: 'mock', configured: true }, 'blocked_mock'],
+    ['agent model refuses everything when not configured', `${MODEL_ORIGIN}/v1/messages`, { mode: 'real' }, 'agent_not_configured'],
+    ['agent model refuses another origin', 'https://api.anthropic.com.example/v1/messages', { mode: 'real', configured: true }, 'blocked_origin'],
+    ['agent model refuses plain http', 'http://api.anthropic.com/v1/messages', { mode: 'real', configured: true }, 'blocked_scheme'],
+    ['agent model refuses the gateway origin', 'https://gateway.example/x', { mode: 'real', configured: true }, 'blocked_origin'],
+  ];
+  const checks = [...cases.map(run(decide)), ...loginCases.map(run(decideLogin)), ...modelCases.map(run(decideModel))];
   return { ok: checks.every((c) => c.ok), checks };
 }
 
 // One guard per lab instance. getMode() is read at every call, so a switch needs no restart.
-export function createNetguard({ getMode, mockGateway, getRealOrigin = () => null, getLoginBase = () => null }) {
-  const stats = { attempts: 0, blocked: 0, mockServed: 0, realAllowed: 0, loginAllowed: 0 };
+export function createNetguard({ getMode, mockGateway, getRealOrigin = () => null, getLoginBase = () => null, getModelConfigured = () => false }) {
+  const stats = { attempts: 0, blocked: 0, mockServed: 0, realAllowed: 0, loginAllowed: 0, modelAllowed: 0 };
   const verdict = (input) => decide(input, { mode: getMode(), realOrigin: getRealOrigin() });
 
   // Drop-in for fetch(), for the Mock transport. A Real request never goes through here: see assertAllowed.
@@ -123,5 +145,14 @@ export function createNetguard({ getMode, mockGateway, getRealOrigin = () => nul
     return v;
   }
 
-  return { guardedFetch, assertAllowed, assertLoginAllowed, decide: verdict, selfTest, stats: () => ({ ...stats }), resetStats: () => { for (const k of Object.keys(stats)) stats[k] = 0; } };
+  // Called before every agent model request. Throws NetguardError unless the lab is in Real, the agent is configured and the URL is the Anthropic API.
+  function assertModelAllowed(input) {
+    stats.attempts += 1;
+    const v = decideModel(input, { mode: getMode(), configured: getModelConfigured() });
+    if (!v.allow) { stats.blocked += 1; throw new NetguardError(v.code, v.reason); }
+    stats.modelAllowed += 1;
+    return v;
+  }
+
+  return { guardedFetch, assertAllowed, assertLoginAllowed, assertModelAllowed, decide: verdict, selfTest, stats: () => ({ ...stats }), resetStats: () => { for (const k of Object.keys(stats)) stats[k] = 0; } };
 }

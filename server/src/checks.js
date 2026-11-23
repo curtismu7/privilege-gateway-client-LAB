@@ -4,6 +4,7 @@ import { nodeCheck } from './doctor.js';
 import { assertBindAllowed, bindHost, portProblem } from './safety.js';
 import { PORT } from './config.js';
 import { selfTest as netguardSelfTest } from './netguard.js';
+import { agentConfig } from './agentChat.js';
 import { DOORS, TOOLS, grantedTools } from './doors.js';
 import { doorConfig } from './gatewayReal.js';
 import { settingsText } from './realDoor.js';
@@ -29,6 +30,8 @@ export function runChecks(env = process.env, { scan = scanStories } = {}) {
   checks.push({ id: 'mock-gateway', level: shapeOk ? 'pass' : 'fail', detail: `${TOOLS.length} tools, doors permit: ${shape}; in-process, no socket` });
   const real = doorConfig(settingsText(env), 'PGC');
   checks.push({ id: 'real', level: 'info', detail: real.ok ? `Real is configured for ${real.apps.length} door(s) and ${real.callers.length} key(s) (names and values are not printed). It is the default; Mock stays one click away.` : 'Real is not configured, so the lab starts in Mock. Real settings (PGC_GW_URL, PGC_GW_APPS, PGC_GW_KEY_<NAME>) come only from this lab\'s own .env.' });
+  const agent = agentConfig(env);
+  checks.push({ id: 'agent', level: 'info', detail: agent.configured ? `The Real agent chat is configured (model ${agent.model}; the key is not printed). It calls the Anthropic API only in Real.` : 'The Real agent chat is not configured: the Chat tab in Real says so and the Tools tab still works. Set PGC_ANTHROPIC_API_KEY in this lab\'s own .env to turn it on.' });
   const sc = scan();
   checks.push({ id: 'stories', level: sc.missing.length === 0 && sc.stories >= 6 && Object.keys(VERTICALS).length === 3 ? 'pass' : 'fail', detail: sc.missing.length ? `undefined {{cast}} tokens: ${sc.missing.slice(0, 3).join('; ')}` : `${STORIES.length} stories use ${sc.tokens.length} {{cast}} tokens, all defined by each of ${Object.keys(VERTICALS).length} vertical packs` });
   const cust = loadCustomerConfig({ env });

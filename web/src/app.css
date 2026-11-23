@@ -185,6 +185,15 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn), .pgc-go:disable
 .pgc-msg b { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
 .pgc-chipword { display: inline-flex; align-items: center; gap: 4px; justify-self: start; padding: 1px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.75rem; font-weight: 700; color: var(--text); }
 .pgc-chipword svg { width: 14px; height: 14px; }
+.pgc-note--real { padding: 8px 10px; border: 1px solid var(--border); border-left: 4px solid var(--status-info); border-radius: 6px; background: var(--surface-2); color: var(--text); }
+.pgc-msg__text { white-space: pre-wrap; }
+.pgc-msg--stopped { border-left: 4px solid var(--status-warn); }
+.pgc-steps { margin: 0.3rem 0 0; padding-left: 1.2rem; display: grid; gap: 0.25rem; font-size: 0.82rem; color: var(--text-body); }
+.pgc-steps li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; overflow-wrap: anywhere; }
+.pgc-steps code { font-size: 0.78rem; }
+.pgc-steps__args { color: var(--muted); }
+.pgc-chipword--btn { background: transparent; cursor: pointer; font: inherit; font-size: 0.75rem; font-weight: 700; }
+.pgc-chipword--btn:focus-visible { outline: 2px solid var(--status-info); outline-offset: 2px; }
 .pgc-chipword[data-verdict="allowed"] { border-color: var(--status-ok); color: var(--status-ok); }
 .pgc-chipword[data-verdict="blocked"], .pgc-chipword[data-verdict="held"] { border-color: var(--status-warn); color: var(--status-warn); }
 .pgc-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem; align-items: end; margin-top: 0.8rem; }

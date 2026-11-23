@@ -1,8 +1,8 @@
 import { createApp, startHttpServer } from '../src/app.js';
 
 // Start the app on an ephemeral loopback port. The returned base URL uses 127.0.0.1, which the Host check allows.
-export async function startLab({ env = {}, fetchImpl } = {}) {
-  const { app, health, lab } = createApp({ env: { ...env }, ...(fetchImpl ? { fetchImpl } : {}) });
+export async function startLab({ env = {}, fetchImpl, modelFetch } = {}) {
+  const { app, health, lab } = createApp({ env: { ...env }, ...(fetchImpl ? { fetchImpl } : {}), ...(modelFetch ? { modelFetch } : {}) });
   const { server, url } = await startHttpServer({ port: 0, host: '127.0.0.1', app });
   const base = `http://127.0.0.1:${server.address().port}`;
   return { base, url, lab, close: () => { health.stop(); return new Promise((r) => server.close(r)); } };
@@ -53,7 +53,8 @@ export async function openSession(gw, door) {
 // hostile case for key scrubbing), fail (answer every POST with that status).
 import { createMockGateway } from '../src/mockGateway.js';
 // callReply: { status, json } answers every tools/call with that body (a gateway that denies with 200, or a tool that errors); sessions and tools/list stay normal.
-export async function startStubGateway({ keys = {}, echoKey = false, fail = 0, failMessage = 'stub failed on purpose', callReply = null } = {}) {
+// listTools: (tools) => tools, to make the stub list other schemas than the Mock's (the real gateway lists the tools' own schemas).
+export async function startStubGateway({ keys = {}, echoKey = false, fail = 0, failMessage = 'stub failed on purpose', callReply = null, listTools = null } = {}) {
   const gw = createMockGateway({ keys });
   const seen = [];
   const server = http.createServer((req, res) => {
@@ -73,6 +74,12 @@ export async function startStubGateway({ keys = {}, echoKey = false, fail = 0, f
         return res.end(JSON.stringify({ jsonrpc: '2.0', id, ...callReply.json }));
       }
       const out = await gw.handle(new URL(`${MOCK_ORIGIN}${req.url}`), { method: req.method, headers: req.headers, body });
+      if (listTools && /"tools\/list"/.test(body) && out.status === 200) {
+        const j = await out.json();
+        if (j?.result?.tools) j.result.tools = listTools(j.result.tools);
+        res.writeHead(200, { 'content-type': 'application/json' });
+        return res.end(JSON.stringify(j));
+      }
       res.writeHead(out.status, Object.fromEntries(out.headers));
       res.end(Buffer.from(await out.arrayBuffer()));
     });
