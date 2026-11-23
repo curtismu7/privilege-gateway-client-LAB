@@ -33,13 +33,13 @@ html { -webkit-text-size-adjust: 100%; font-size: var(--fs, 16px); }
 
 /* Every button is Ping Red, white text (owner, 2026-11-22). The family red is captured once here at the root, so the panels and tabs that remap
    --accent to ink further down do not turn their buttons ink. Selected or pressed is the deep red with a white ring so it still reads as "on";
-   disabled is neutral grey, not a faded red. Selection cards (door and tool tiles), the verdict chips in Chat, everything inside the movie reel (its frames and controls keep the shared reel look, owner 2026-11-23), the tabs (ink when selected, owner 2026-11-23) and link-style buttons keep their own look: white text on a
+   disabled is neutral grey, not a faded red. Selection cards (door and tool tiles), the verdict chips in Chat, everything inside the movie reel (its frames and controls keep the shared reel look, owner 2026-11-23), the tabs (ink when selected, owner 2026-11-23), the diagram's zoom controls and the walkthrough bar (its main button is ink, owner 2026-11-23) and link-style buttons keep their own look: white text on a
    full red card would hide their descriptions. Verdicts are never red: a refusal stays amber with a lock and the word. */
 :root { --btn-bg: var(--accent-gradient); --btn-deep: var(--accent-deep); --btn-edge: var(--primary-edge); --btn-on: var(--on-accent); --btn-off: var(--accent-inactive-gradient); --btn-off-edge: var(--accent-inactive); }
-button:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]), .pgc-go { background: var(--btn-bg); color: var(--btn-on); border-color: var(--btn-edge); }
+button:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]):not(.react-flow *):not(.pgc-stepbar *), .pgc-go:not(.pgc-stepbar *) { background: var(--btn-bg); color: var(--btn-on); border-color: var(--btn-edge); }
 .pgc-go { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-button[aria-pressed="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]), button[aria-selected="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]) { background: var(--btn-deep); color: var(--btn-on); border-color: var(--btn-on); box-shadow: inset 0 0 0 2px var(--btn-on); }
-button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]), .pgc-go:disabled { background: var(--btn-off); color: var(--btn-on); border-color: var(--btn-off-edge); opacity: 1; box-shadow: none; }
+button[aria-pressed="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]):not(.react-flow *):not(.pgc-stepbar *), button[aria-selected="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]):not(.react-flow *):not(.pgc-stepbar *) { background: var(--btn-deep); color: var(--btn-on); border-color: var(--btn-on); box-shadow: inset 0 0 0 2px var(--btn-on); }
+button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]):not(.react-flow *):not(.pgc-stepbar *), .pgc-go:disabled:not(.pgc-stepbar *) { background: var(--btn-off); color: var(--btn-on); border-color: var(--btn-off-edge); opacity: 1; box-shadow: none; }
 
 /* ---- page layout ------------------------------------------------------------------------------------------------------------------- */
 .pgc-layout { display: grid; grid-template-columns: var(--rail-w, 21rem) 4px minmax(0, 1fr); gap: 1rem; margin-top: 1rem; align-items: start; }
@@ -233,7 +233,10 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 .pgc-etabs__tabs [role="tab"] svg { width: 16px; height: 16px; }
 .pgc-etabs__tabs [role="tab"][aria-selected="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
 .pgc-etabs__count { margin-left: auto; padding: 0 0.4rem 0.5rem; color: var(--text-body); font-size: 0.85rem; font-weight: 600; overflow-wrap: anywhere; }
-.pgc-etabs__body { padding: 1rem; min-width: 0; max-height: 560px; overflow: auto; }
+.pgc-etabs__body { padding: 1rem; min-width: 0; max-height: 820px; overflow: auto; }
+/* The Diagram tab's canvas (owner 2026-11-23: the diagram was tiny). In the tab row nothing gives the canvas a height, so it stayed at the 190px
+   minimum made for the old floating panel and React Flow shrank the whole call path into that strip. Here it gets a real height. */
+.pgc-etabs__body .pgc-dg-canvas { height: clamp(380px, 55vh, 560px); }
 .pgc-etabs__body .pgc-pane--fill { min-height: 320px; }
 @media (max-height: 520px) and (min-width: 601px) {
   .pgc-etabs__bar { padding: 4px 8px 0; gap: 0.2rem 0.6rem; }
@@ -285,6 +288,7 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 .pgc-stepbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.6rem; }
 .pgc-stepbar button { display: inline-flex; align-items: center; gap: 4px; }
 .pgc-stepbar button svg { width: 14px; height: 14px; }
+.pgc-stepbar .pgc-go:not(:disabled) { background: var(--text); color: var(--bg); border-color: var(--text); }
 .pgc-stepbar__speed { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 600; color: var(--text); }
 .pgc-stepbar__count { margin-left: auto; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
 .pgc-runnote { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.3rem; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 8px; background: var(--surface-2); }
