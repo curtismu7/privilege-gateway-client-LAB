@@ -50,6 +50,16 @@ client, PKCE) and reads userinfo, sets the session cookie for that browser's wor
 `?signin_error=<code>`, which the page words. The local lab keeps pi.flow. Tests: start/callback/replay, refusal, forged state, token failure,
 return-path guard, not-hosted has no route.
 
+## Local proof on the domain (2026-11-23, owner signed in)
+The live lab container was swapped to this branch with the hosted settings behind the lab-proxy (`local.ping-devops.com`), then put back.
+- Before sign-in: Real discover, call and agent answered 401 `signin_required`; `POST /api/mode` answered 409; the page said to sign in.
+- Redirect sign-in: start sent the browser to PingOne's authorize with PKCE and the proxy callback; the owner signed in as demoUser; the
+  lab saw a `real-login` for that browser's workspace.
+- Signed in: `lab-banking-full` Allowed, 18 tools; `lab-banking-limited` Allowed, 7 tools; `lab-banking-blocked` Blocked by policy. The agent
+  through the Privilege LLM gateway (`claude-sonnet-4-5`) answered "who holds prod-db-admin" with `who_has_role` (Allowed), and on the limited
+  door asked for the unlisted `sensitive_holdings`, which the gateway refused.
+- Known gap: a callback with an unknown or reused state returns to the site root (`/`), which behind the proxy is the shelf, not the lab.
+
 ## Status of the outside pieces (2026-11-23)
 - Sign-in app `privilege-gateway-client-hosted` created in the PingOne environment where the hosted-access colleagues are (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in `~/.config/demo-kit/pgc-hosted.env`.
 - Keys: waiting on the Pingid-privilege rebuild (new tenant). The rebuild session will create the three door keys, their grants and `pgc-agent-llm` after the gateway cutover.
