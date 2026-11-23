@@ -211,34 +211,36 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 .pgc-persona b { color: var(--text); }
 .pgc-persona span { color: var(--text-body); font-size: 0.8rem; overflow-wrap: anywhere; }
 
-/* ---- evidence panels: the dock and what is inside the dialogs (step 2b) ------------------------------------------------------------- */
-.pgc-main { padding-bottom: calc(var(--pgc-dock-h, 56px) + 1rem); }
-.pgc-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; padding: 0.5rem 16px; background: var(--surface); border-top: 1px solid var(--border); box-shadow: 0 -4px 14px var(--shadow-ink); }
-.pgc-dock__lbl { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-.pgc-dock__btns { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.pgc-dock__btns button { display: inline-flex; align-items: center; gap: 6px; }
-.pgc-dock__btns button svg { width: 16px; height: 16px; }
-/* N11: a short window (200% zoom is about 450px tall) gets a compact dock, so the panels keep their room. */
+/* ---- evidence views: the inline tab row under the verdict (step 2b, reshaped after the Appfire Agent Governance lab) ------------------------------ */
+.pgc-main { padding-bottom: 1rem; }
+.pgc-etabs { min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-top: 1rem; }
+.pgc-etabs__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1rem; padding: 0.6rem 0.6rem 0; border-bottom: 1px solid var(--border); }
+.pgc-etabs__tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.pgc-etabs__tabs [role="tab"] { display: inline-flex; align-items: center; gap: 6px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; margin-bottom: -1px; }
+.pgc-etabs__tabs [role="tab"] svg { width: 16px; height: 16px; }
+.pgc-etabs__tabs [role="tab"][aria-selected="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.pgc-etabs__count { margin-left: auto; padding: 0 0.4rem 0.5rem; color: var(--text-body); font-size: 0.85rem; font-weight: 600; overflow-wrap: anywhere; }
+.pgc-etabs__body { padding: 1rem; min-width: 0; max-height: 560px; overflow: auto; }
+.pgc-etabs__body .pgc-pane--fill { min-height: 320px; }
 @media (max-height: 520px) and (min-width: 601px) {
-  .pgc-dock { padding: 4px 16px; gap: 0.2rem 0.6rem; } .pgc-dock__lbl { display: none; }
-  .pgc-dock__btns button { min-height: 32px; padding: 3px 8px; font-size: 0.8rem; }
-  .pgc-dock__count { font-size: 0.8rem; }
+  .pgc-etabs__bar { padding: 4px 8px 0; gap: 0.2rem 0.6rem; }
+  .pgc-etabs__tabs [role="tab"] { min-height: 32px; padding: 3px 8px; font-size: 0.8rem; }
+  .pgc-etabs__count { font-size: 0.8rem; }
 }
-.pgc-dock__count { margin-left: auto; color: var(--text-body); font-size: 0.85rem; font-weight: 600; }
 @media (max-width: 600px) {
-  .pgc-dock { padding: 0.4rem 12px; gap: 0.3rem 0.6rem; } .pgc-dock__count { margin-left: 0; width: 100%; font-size: 0.78rem; } .pgc-dock__lbl { display: none; }
-  /* six buttons (the Diagram panel is the fifth panel) in two rows of three */
-  .pgc-dock__btns { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.3rem; }
-  .pgc-dock__btns button { justify-content: center; gap: 4px; padding: 6px 4px; min-height: 40px; font-size: 0.74rem; line-height: 1.15; text-align: center; }
-  .pgc-dock__btns button svg { width: 14px; height: 14px; flex: none; }
+  .pgc-etabs__bar { padding: 0.4rem 8px 0; gap: 0.3rem 0.6rem; } .pgc-etabs__count { width: 100%; margin-left: 0; padding: 0 0.4rem 0.4rem; font-size: 0.78rem; }
+  .pgc-etabs__tabs { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.3rem; }
+  .pgc-etabs__tabs [role="tab"] { justify-content: center; gap: 4px; padding: 6px 4px; min-height: 40px; font-size: 0.74rem; line-height: 1.15; text-align: center; }
+  .pgc-etabs__tabs [role="tab"] svg { width: 14px; height: 14px; flex: none; }
+  .pgc-etabs__body { padding: 0.8rem; max-height: none; }
 }
-
+/* N11: on a phone the step detail dialog and the talk track stop at the bottom of the page (there is no dock any more). */
 /* The same calm look for the page's own tabs (.pgc-calm, set by Tabs in App.jsx from runLook): the Evidence tab's Gateway trace and the JSON panes
    (the shared JsonPane paints the keys note, reason, decision, verdict, error and outcome with --danger-text) sit outside the dialogs, so the same
    remap is scoped to the lab's own wrapper. The vendored files are never edited; see docs/upstream/README.md. */
-/* N11: on a phone the bottom sheet of a panel (or the talk track) stops above the dock, so the dock buttons stay reachable. */
+/* N11: on a phone a floating panel (or the talk track) is a bottom sheet that stops above the bottom of the page. */
 @media (max-width: 600px) {
-  html .fd-panel.pgc-fd[data-placement], html .fd-panel[data-testid="talk-track-dialog"][data-placement] { bottom: var(--pgc-dock-h, 56px); max-height: calc(100vh - var(--pgc-dock-h, 56px) - 12px); border-radius: 10px; }
+  html .fd-panel.pgc-fd[data-placement], html .fd-panel[data-testid="talk-track-dialog"][data-placement] { bottom: 12px; max-height: calc(100vh - 24px); border-radius: 10px; }
 }
 /* Inside a panel red is not used (red is Sign in, the thin header rule and a real error): the shared accent tokens are ink here, so the active
    step, the pressed toggles, the panel's top edge and the Run button follow the same rule as the rest of the page. A refusal reads amber, with a

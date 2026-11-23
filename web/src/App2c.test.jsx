@@ -327,7 +327,7 @@ describe("presenter mode and the talk track", () => {
     expect(document.documentElement.dataset.presenter).toBe("1");
   });
 
-  test("the Talk track opens from the header and from the dock, is non-modal, carries the server's sections with the vertical's words, and closes", async () => {
+  test("the Talk track opens from the header toggle, is non-modal, carries the server's sections with the vertical's words, and closes", async () => {
     await mount();
     expect(q("talk-track-dialog")).toBeNull();
     click("talk-track-toggle");
@@ -339,10 +339,10 @@ describe("presenter mode and the talk track", () => {
     expect(tid("talk-track")).toHaveTextContent("Northwind Retail");
     expect(tid("talk-track")).toHaveTextContent("The door that permits every tool");
     expect(document.body.textContent).not.toMatch(/\{\{/);
-    expect(tid("dock-talk")).toHaveAttribute("aria-pressed", "true");
+    expect(tid("talk-track-toggle")).toHaveAttribute("aria-pressed", "true");
     click("talk-track-toggle");
     await waitFor(() => expect(q("talk-track-dialog")).toBeNull());
-    click("dock-talk");
+    click("talk-track-toggle");
     expect(await screen.findByTestId("talk-track-dialog")).toBeInTheDocument();
     // the vertical changes its words
     fireEvent.change(tid("vertical-select"), { target: { value: "finance" } });
@@ -358,25 +358,21 @@ describe("presenter mode and the talk track", () => {
 });
 
 describe("Reset", () => {
-  test("Reset restores the page: run, story and its address, walk, panels, talk track and presenter mode (back to how the lab started)", async () => {
+  test("Reset restores the page: run, story and its address, walk, views, talk track and presenter mode (back to how the lab started)", async () => {
     await mount({}, "?story=S01");
     await waitWord("Allowed");
     click("presenter");
-    click("dock-reel");
-    await screen.findByTestId("panel-reel");
-    click(within(tid("panel-reel")).getByTestId("step-next"));
-    expect(tid("dock-counter")).toHaveTextContent("Message 1 of");
+    click("etab-reel");
+    click(within(tid("epanel-reel")).getByTestId("step-next"));
+    expect(tid("evidence-counter")).toHaveTextContent("Message 1 of");
     expect(window.location.search).toBe("?story=S01");
-    localStorage.setItem("pgc.panel.reel", JSON.stringify({ pos: { x: 1, y: 1 }, size: { w: 300, h: 300 } }));
     click("reset");
     await waitWord("Ready");
     expect(q("story-card")).toBeNull();
     expect(window.location.search).toBe("");
-    expect(q("panel-reel")).toBeNull();
     expect(q("talk-track-dialog")).toBeNull();
-    expect(tid("dock-counter")).toHaveTextContent("No run yet");
+    expect(tid("evidence-counter")).toHaveTextContent("No run yet");
     expect(document.documentElement.dataset.presenter).toBe("0");
-    expect(localStorage.getItem("pgc.panel.reel")).toBeNull();
     expect(t.calls.some((c) => c.path === "/api/reset" && c.method === "POST")).toBe(true);
   });
   test("Reset keeps the mode and a lab started in presenter mode stays in it", async () => {
