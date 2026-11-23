@@ -49,19 +49,24 @@ function createSink({ dir }) {
   };
 }
 
-export function createWorkspaces({ dataDir = '', max = MAX_WORKSPACES } = {}) {
-  const all = new Map();
+// evictIdle (the hosted instance): at the cap, the least recently used workspace is forgotten to admit a new visitor, instead of a 429.
+export function createWorkspaces({ dataDir = '', max = MAX_WORKSPACES, evictIdle = false } = {}) {
+  const all = new Map(); // insertion order = recency: a get() moves the workspace to the end
   const build = (id) => ({ id, runs: [], sink: createSink({ dir: dataDir ? path.join(dataDir, id) : null }), createdAt: Date.now() });
   return {
     get(id = DEFAULT_WORKSPACE) {
       if (!validWorkspace(id)) throw new WorkspaceError('bad_workspace', 400, 'bad workspace id');
       let ws = all.get(id);
-      if (!ws) {
-        // The default workspace is always admitted: 20 other ids must never lock the person on the plain page out of the lab.
-        if (id !== DEFAULT_WORKSPACE && [...all.keys()].filter((k) => k !== DEFAULT_WORKSPACE).length >= max) throw new WorkspaceError('too_many_workspaces', 429, `at most ${max} workspaces; reset one or restart the lab`);
-        ws = build(id);
-        all.set(id, ws);
+      if (ws) { all.delete(id); all.set(id, ws); return ws; }
+      // The default workspace is always admitted: 20 other ids must never lock the person on the plain page out of the lab.
+      const others = [...all.keys()].filter((k) => k !== DEFAULT_WORKSPACE);
+      if (id !== DEFAULT_WORKSPACE && others.length >= max) {
+        if (!evictIdle) throw new WorkspaceError('too_many_workspaces', 429, `at most ${max} workspaces; reset one or restart the lab`);
+        const oldest = all.get(others[0]);
+        oldest.runs.length = 0; oldest.sink.clear(); all.delete(others[0]);
       }
+      ws = build(id);
+      all.set(id, ws);
       return ws;
     },
     peek: (id = DEFAULT_WORKSPACE) => all.get(id) ?? null,

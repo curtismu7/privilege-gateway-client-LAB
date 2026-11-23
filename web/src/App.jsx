@@ -282,7 +282,7 @@ export default function App() {
   return (
     <Shell topMenu={topMenu} brand={brand}>
       <SimulationBanner source={source} origin={source === "real" ? lab.info.gateway?.origin : null} />
-      <ModeStatus info={lab.info} />
+      <ModeStatus info={lab.info} signedIn={lab.me?.source === "real-login"} />
       {lab.modeError && (
         <p className="pgc-note pgc-note--hold" role="alert" data-testid="mode-error">{lab.modeError.message}</p>
       )}

@@ -469,6 +469,20 @@ describe("Real agent chat", () => {
     expect(JSON.parse(tid("args-text").value)).toEqual({ resource: "prod-db-primary" });
     expect(tid("args-note")).toHaveTextContent("Required: resource");
   });
+
+  test("hosted: in Real a visitor who is not signed in is told to sign in; Mock and a signed-in visitor see no such note", async () => {
+    await mount({ env: AGENT_ENV, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: false } }) } });
+    expect(screen.queryByTestId("hosted-signin")).toBeNull();
+    await toReal();
+    expect(tid("hosted-signin")).toHaveTextContent(/Sign in to run the Real lab/);
+  });
+
+  test("hosted: a visitor with a Real page login sees no sign-in note in Real", async () => {
+    const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
+    await mount({ env: AGENT_ENV, session: me, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: true } }) } });
+    await toReal();
+    expect(screen.queryByTestId("hosted-signin")).toBeNull();
+  });
 });
 
 describe("Agent chat first, prompts and inline evidence (owner 2026-11-23)", () => {

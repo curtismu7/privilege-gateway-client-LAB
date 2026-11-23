@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import { createMockGateway, MOCK_ORIGIN } from './mockGateway.js';
 import { createMockClientFactory } from './mockClient.js';
-import { createNetguard, selfTest as netguardSelfTest } from './netguard.js';
+import { createNetguard, selfTest as netguardSelfTest, MODEL_ORIGIN } from './netguard.js';
 import { createRealDoor } from './gatewayReal.js';
 import { loadReal } from './realDoor.js';
 import { createMode } from './mode.js';
@@ -103,10 +103,10 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
   let mode;
   const login = loginConfig(env);
   let agentChat = null; // the Real agent; built at the end, once the lab object exists (it runs its tools through lab.discover and lab.call)
-  const guard = createNetguard({ getMode: () => mode.get(), mockGateway, getRealOrigin: () => real?.origin ?? null, getLoginBase: () => (login.ok ? login.base : null), getModelConfigured: () => agentChat?.info().configured === true });
+  const guard = createNetguard({ getMode: () => mode.get(), mockGateway, getRealOrigin: () => real?.origin ?? null, getLoginBase: () => (login.ok ? login.base : null), getModelConfigured: () => agentChat?.info().configured === true, getModelOrigin: () => agentChat?.origin ?? MODEL_ORIGIN });
   real = loadReal(env, guard, { clientInfo: { name: 'privilege-gateway-client-lab', version } });
   mode = createMode({ wanted: env.MODE, realAvailable: real.available, realReason: real.reason });
-  const workspaces = createWorkspaces({ dataDir: readSettings(env).dataDir });
+  const workspaces = createWorkspaces({ dataDir: readSettings(env).dataDir, max: readSettings(env).maxWorkspaces, evictIdle: readSettings(env).hosted });
 
   const activeDoors = () => (mode.get() === 'real' ? real.doors : DOORS.map((d) => d.id));
 
@@ -208,7 +208,7 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
         scenarios: source === 'mock' ? SCENARIOS : ['none'],
         catalog: TOOLS.map((t) => ({ name: t.name, description: t.description, args: structuredClone(t.args), required: [...t.required], write: Boolean(t.write) })),
         // The Real agent chat: configured or not, which model, and what to set. Never the key.
-        agent: (({ configured, model, reason }) => ({ configured, model, reason, available: source === 'real' && configured }))(agentChat.info()),
+        agent: (({ configured, model, reason, via }) => ({ configured, model, reason, via, available: source === 'real' && configured }))(agentChat.info()),
         version,
       };
     },
@@ -220,8 +220,10 @@ export function createLab({ env = process.env, version = '0.0.0', catalog = JSON
     trace: (workspace = DEFAULT_WORKSPACE) => workspaces.get(workspace).sink.entries(),
     // Reset clears one workspace (its run log, trace sink and data directory). The mock gateway's sessions and faults and the
     // netguard counters are shared by every workspace, so they are cleared too. The mode (Mock or Real) is left as it is.
+    // Hosted: many visitors share one lab, so a Reset clears only the caller's workspace, never the shared mock gateway or counters.
     reset(workspace = DEFAULT_WORKSPACE) {
       workspaces.reset(workspace);
+      if (readSettings(env).hosted) return { ok: true, workspace, cleared: ['run log', 'trace sink', 'sign-in session'], mode: mode.get() };
       mockGateway.reset();
       guard.resetStats();
       return { ok: true, workspace, cleared: ['run log', 'trace sink', 'sign-in session', 'mock gateway sessions and faults', 'netguard counters'], mode: mode.get() };

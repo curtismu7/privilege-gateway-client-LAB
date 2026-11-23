@@ -52,17 +52,19 @@ export function decideLogin(input, { mode, loginBase = null } = {}) {
   return { allow: true, route: 'login' };
 }
 
-// Real agent chat talks to the Anthropic API, a third origin. It has its own allowance, still one origin: https, no credentials in
-// the URL, exactly MODEL_ORIGIN, and only when the lab is in Real and the owner set the agent's key. Mock never calls a model.
+// Real agent chat talks to its model, a third origin. It has its own allowance, still one origin: https, no credentials in the URL, exactly
+// the configured model origin (MODEL_ORIGIN, the Anthropic API, or the Privilege LLM gateway PGC_LLM_GATEWAY_URL names), and only when the
+// lab is in Real and the agent is configured. Mock never calls a model.
 export const MODEL_ORIGIN = 'https://api.anthropic.com';
-export function decideModel(input, { mode, configured = false } = {}) {
+// `origin` is the configured model origin: the Anthropic API, or (hosted) the Privilege LLM gateway the lab's own settings name.
+export function decideModel(input, { mode, configured = false, origin = MODEL_ORIGIN } = {}) {
   const url = parse(input);
   if (!url) return { allow: false, code: 'bad_url', reason: 'Not a valid URL.' };
   if (mode !== 'real') return { allow: false, code: 'blocked_mock', reason: 'The real agent calls a model and exists in Real only. The Mock chat calls no model.' };
   if (!configured) return { allow: false, code: 'agent_not_configured', reason: 'The real agent is not configured, so no model origin is allowed.' };
   if (url.protocol !== 'https:') return { allow: false, code: 'blocked_scheme', reason: 'The agent model allows https only.' };
   if (url.username || url.password) return { allow: false, code: 'blocked_credentials', reason: 'A URL carrying credentials is refused.' };
-  if (url.origin !== MODEL_ORIGIN) return { allow: false, code: 'blocked_origin', reason: 'Only the Anthropic API origin may be reached by the agent.' };
+  if (url.origin !== origin) return { allow: false, code: 'blocked_origin', reason: 'Only the one model origin this lab\'s settings name may be reached by the agent.' };
   return { allow: true, route: 'model' };
 }
 
@@ -107,13 +109,15 @@ export function selfTest() {
     ['agent model refuses another origin', 'https://api.anthropic.com.example/v1/messages', { mode: 'real', configured: true }, 'blocked_origin'],
     ['agent model refuses plain http', 'http://api.anthropic.com/v1/messages', { mode: 'real', configured: true }, 'blocked_scheme'],
     ['agent model refuses the gateway origin', 'https://gateway.example/x', { mode: 'real', configured: true }, 'blocked_origin'],
+    ['agent model allows a configured LLM gateway origin', 'https://llm-gateway.example/llm/anthropic/v1/messages', { mode: 'real', configured: true, origin: 'https://llm-gateway.example' }, 'allow'],
+    ['agent model with an LLM gateway refuses the Anthropic API', `${MODEL_ORIGIN}/v1/messages`, { mode: 'real', configured: true, origin: 'https://llm-gateway.example' }, 'blocked_origin'],
   ];
   const checks = [...cases.map(run(decide)), ...loginCases.map(run(decideLogin)), ...modelCases.map(run(decideModel))];
   return { ok: checks.every((c) => c.ok), checks };
 }
 
 // One guard per lab instance. getMode() is read at every call, so a switch needs no restart.
-export function createNetguard({ getMode, mockGateway, getRealOrigin = () => null, getLoginBase = () => null, getModelConfigured = () => false }) {
+export function createNetguard({ getMode, mockGateway, getRealOrigin = () => null, getLoginBase = () => null, getModelConfigured = () => false, getModelOrigin = () => MODEL_ORIGIN }) {
   const stats = { attempts: 0, blocked: 0, mockServed: 0, realAllowed: 0, loginAllowed: 0, modelAllowed: 0 };
   const verdict = (input) => decide(input, { mode: getMode(), realOrigin: getRealOrigin() });
 
@@ -145,10 +149,10 @@ export function createNetguard({ getMode, mockGateway, getRealOrigin = () => nul
     return v;
   }
 
-  // Called before every agent model request. Throws NetguardError unless the lab is in Real, the agent is configured and the URL is the Anthropic API.
+  // Called before every agent model request. Throws NetguardError unless the lab is in Real, the agent is configured and the URL is on the configured model origin.
   function assertModelAllowed(input) {
     stats.attempts += 1;
-    const v = decideModel(input, { mode: getMode(), configured: getModelConfigured() });
+    const v = decideModel(input, { mode: getMode(), configured: getModelConfigured(), origin: getModelOrigin() });
     if (!v.allow) { stats.blocked += 1; throw new NetguardError(v.code, v.reason); }
     stats.modelAllowed += 1;
     return v;

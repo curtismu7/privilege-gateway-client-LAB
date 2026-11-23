@@ -5,14 +5,16 @@
 // hops and the verdict of a Tools-tab run, and the gateway decides every call. The model never sees a key; the lab never approves a held call.
 //
 // The API key (PGC_ANTHROPIC_API_KEY) is write-only like the agent keys: it is read here and given to the SDK, never returned, logged or traced.
-// Every model request goes through the netguard's model allowance (Real only, the one Anthropic API origin).
+// Every model request goes through the netguard's model allowance (Real only, one origin: the Anthropic API, or the Privilege LLM gateway
+// that PGC_LLM_GATEWAY_URL names).
 import Anthropic from '@anthropic-ai/sdk';
 import { ENV_PREFIX } from './config.js';
 import { MODEL_ORIGIN } from './netguard.js';
 import { modelToolFrom } from './toolSchema.js';
 
 export const DEFAULT_AGENT_MODEL = 'claude-sonnet-5-5';
-const MODEL_NAME = /^[a-z0-9][a-z0-9.-]{0,63}$/;
+// Model ids: the Anthropic API's (claude-sonnet-5-5) and the gateway's provider-prefixed ones (us.anthropic.claude-sonnet-4-5-v1:0).
+const MODEL_NAME = /^[A-Za-z0-9][A-Za-z0-9._:\/-]{0,99}$/;
 export const AGENT_LIMITS = Object.freeze({ messageChars: 2000, turns: 20, toolCalls: 6, modelCalls: 8, timeoutMs: 30_000, turnMs: 90_000, resultChars: 8000, maxTokens: 4000 });
 export const AGENT_HOWTO = `The real agent needs ${ENV_PREFIX}_ANTHROPIC_API_KEY in this lab's own .env (beside docker-compose.yml), then a restart. The Tools tab works without it.`;
 
@@ -40,13 +42,23 @@ export class AgentError extends Error {
   constructor(status, code, message) { super(message); this.status = status; this.code = code; }
 }
 
-// -> { configured, model, reason } ; never carries the key.
+// -> { configured, model, reason, via, origin } ; never carries a key.
+// Two ways to reach the model: the Anthropic API with PGC_ANTHROPIC_API_KEY (via "anthropic"), or the Privilege LLM gateway's Anthropic lane
+// with an llm-scoped agent key (via "llm-gateway": PGC_LLM_GATEWAY_URL + PGC_LLM_VIRTUAL_KEY; the hosted instance uses this). The gateway wins.
 export function agentConfig(env) {
-  const key = String(env[`${ENV_PREFIX}_ANTHROPIC_API_KEY`] ?? '').trim();
   const wanted = String(env[`${ENV_PREFIX}_AGENT_MODEL`] ?? '').trim();
   const model = wanted && MODEL_NAME.test(wanted) ? wanted : DEFAULT_AGENT_MODEL;
-  if (!key || /[\r\n\s]/.test(key)) return { configured: false, model, reason: AGENT_HOWTO };
-  return { configured: true, model, reason: null };
+  const bad = (k) => !k || /[\r\n\s]/.test(k);
+  const gwRaw = String(env[`${ENV_PREFIX}_LLM_GATEWAY_URL`] ?? '').trim();
+  if (gwRaw) {
+    let gw = null;
+    try { gw = new URL(gwRaw); } catch { gw = null; }
+    if (!gw || gw.protocol !== 'https:' || gw.username || gw.password) return { configured: false, model, via: 'llm-gateway', origin: null, reason: `${ENV_PREFIX}_LLM_GATEWAY_URL must be an https URL with no credentials in it.` };
+    if (bad(String(env[`${ENV_PREFIX}_LLM_VIRTUAL_KEY`] ?? '').trim())) return { configured: false, model, via: 'llm-gateway', origin: null, reason: `The real agent through the LLM gateway needs ${ENV_PREFIX}_LLM_VIRTUAL_KEY (an llm-scoped agent key) in this lab's settings.` };
+    return { configured: true, model, via: 'llm-gateway', origin: gw.origin, base: `${gw.origin}${gw.pathname.replace(/\/+$/, '')}/llm/anthropic`, reason: null };
+  }
+  if (bad(String(env[`${ENV_PREFIX}_ANTHROPIC_API_KEY`] ?? '').trim())) return { configured: false, model, via: 'anthropic', origin: null, reason: AGENT_HOWTO };
+  return { configured: true, model, via: 'anthropic', origin: MODEL_ORIGIN, base: MODEL_ORIGIN, reason: null };
 }
 
 // The chat history the page sends: [{ role: 'user' | 'assistant', text }], user first and last, capped. Text only: earlier turns' tool
@@ -79,18 +91,25 @@ const textOf = (content) => content.filter((b) => b.type === 'text').map((b) => 
 // lab: the lab core (discover, call, mode). guard: its netguard. fetchImpl: the transport under the guard (tests pass a stub).
 export function createAgentChat({ env, lab, guard, fetchImpl = globalThis.fetch }) {
   const config = agentConfig(env);
-  const apiKey = config.configured ? String(env[`${ENV_PREFIX}_ANTHROPIC_API_KEY`]).trim() : null;
+  const viaGateway = config.via === 'llm-gateway';
+  const secret = !config.configured ? null : String(env[viaGateway ? `${ENV_PREFIX}_LLM_VIRTUAL_KEY` : `${ENV_PREFIX}_ANTHROPIC_API_KEY`]).trim();
   const guardedFetch = (input, init) => { guard.assertModelAllowed(typeof input === 'string' ? input : input?.url ?? String(input)); return fetchImpl(input, init); };
   // Built on the first turn, not at start: nothing touches the SDK until the real agent is used (the web tests load this module in jsdom).
   let client = null;
-  const clientOf = () => (client ??= new Anthropic({ apiKey, baseURL: MODEL_ORIGIN, fetch: guardedFetch, maxRetries: 1, timeout: AGENT_LIMITS.timeoutMs }));
+  // Explicit credentials and base URL, so nothing in the process environment (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL) is used.
+  // The LLM gateway takes the agent key as a bearer token (authToken); the Anthropic API takes the API key.
+  const clientOf = () => (client ??= new Anthropic({
+    ...(viaGateway ? { authToken: secret, apiKey: null } : { apiKey: secret, authToken: null }),
+    baseURL: config.base, fetch: guardedFetch, maxRetries: 1, timeout: AGENT_LIMITS.timeoutMs,
+  }));
 
   async function turn({ door, messages }, opts = {}) {
     if (lab.mode.get() !== 'real') throw new AgentError(409, 'agent_real_only', 'The real agent runs in Real only. The Mock chat is the simulated agent.');
     if (!config.configured) throw new AgentError(409, 'agent_not_configured', config.reason);
     const convo = checkHistory(messages);
     const steps = [];
-    const out = (o) => ({ source: 'real', simulated: false, steps, ...o });
+    let modelCalls = 0; // model requests that got an answer this turn (the hosted daily cap counts a turn only when this is above 0)
+    const out = (o) => ({ source: 'real', simulated: false, steps, modelCalls, ...o });
 
     // 1. Discover: what the gateway lists on this door for this key. A refused or failed discovery means no tools, and no model call.
     const discovery = await lab.discover({ door }, opts);
@@ -117,17 +136,19 @@ export function createAgentChat({ env, lab, guard, fetchImpl = globalThis.fetch 
       }
       let resp;
       try {
-        resp = await clientOf().beta.messages.create({
-          model: config.model, max_tokens: AGENT_LIMITS.maxTokens, system: SYSTEM, tools, messages: convo,
-          output_config: { effort: 'low' },
-          betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-        });
+        const params = { model: config.model, max_tokens: AGENT_LIMITS.maxTokens, system: SYSTEM, tools, messages: convo };
+        // Through the LLM gateway: the plain Messages request (the gateway's model may not take effort, and the fallback beta is the
+        // Anthropic API's own). Direct: effort low and the server-side refusal fallback.
+        resp = viaGateway
+          ? await clientOf().messages.create(params)
+          : await clientOf().beta.messages.create({ ...params, output_config: { effort: 'low' }, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' });
       } catch (err) {
         // The model did not answer (down, slow, 429, 5xx, bad key, or the netguard refused). No gateway call is made for this step.
         const status = typeof err?.status === 'number' ? err.status : null;
         return out({ model, by: 'lab', stopped: 'model-error',
           reply: `The agent model did not answer${status ? ` (HTTP ${status})` : ''}, so no further tool was called.`, modelError: { status, kind: err?.name === 'NetguardError' ? 'netguard' : 'model' } });
       }
+      modelCalls += 1;
       model = resp.model ?? model;
       if (resp.stop_reason === 'refusal') {
         return out({ model, by: 'lab', stopped: 'refusal', reply: 'The model declined to answer this request, so no further tool was called.' });
@@ -171,5 +192,5 @@ export function createAgentChat({ env, lab, guard, fetchImpl = globalThis.fetch 
     return out({ model, by: 'lab', stopped: 'model-limit', reply: `I stopped after ${AGENT_LIMITS.modelCalls} model calls for one message.` });
   }
 
-  return { info: () => ({ configured: config.configured, model: config.model, reason: config.reason }), turn };
+  return { info: () => ({ configured: config.configured, model: config.model, reason: config.reason, via: config.via }), origin: config.origin ?? MODEL_ORIGIN, turn };
 }

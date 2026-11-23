@@ -1,5 +1,6 @@
 // One Express app: loopback Host check, same-origin writes, bounded JSON bodies, /api (health, shelf, info, mode, discover,
 // call, runs, reset), and the built web app. Every failure on /api is JSON, never an HTML error page (rule 23).
+import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +19,7 @@ import { buildStories } from './stories.js';
 import { buildTalkTrack } from './talkTrack.js';
 import { VERTICALS } from './cast.js';
 import { workspaceFrom, WorkspaceError } from './workspaces.js';
+import { createLoginRunStore } from './auth/loginRuns.js';
 import { PERSONAS, personaById } from './auth/personas.js';
 import { createSessions } from './auth/session.js';
 import { mockRequestRefusal } from './auth/guards.js';
@@ -45,10 +47,25 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
 
   const api = express.Router();
   api.use(express.json({ limit: '16kb' }));
-  api.use((req, _res, next) => { req.workspaceId = workspaceFrom(req); next(); });
   const settings = readSettings(env);
-  const sessions = createSessions({ secret: settings.sessionSecret, ttlMs: settings.sessionTtlMs });
-  const loginRuns = new Map(); // workspace -> the pi.flow run waiting for credentials (server side only)
+  // Hosted: a browser that names no workspace gets its own (a cookie), so visitors never share a run log, a trace or a pending sign-in.
+  api.use((req, res, next) => {
+    if (settings.hosted) {
+      // Hosted: the workspace is the browser's own cookie, never a header or a shared name (X-Workspace and ?workspace= are ignored).
+      const m = /(?:^|;\s*)pgc_ws=(v-[0-9a-f]{16})(?:;|$)/.exec(String(req.headers.cookie || ''));
+      let id = m ? m[1] : null;
+      if (!id) {
+        id = `v-${randomBytes(8).toString('hex')}`;
+        res.append('set-cookie', `pgc_ws=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 3600}; Secure`);
+      }
+      req.workspaceId = id;
+      return next();
+    }
+    req.workspaceId = workspaceFrom(req);
+    next();
+  });
+  const sessions = createSessions({ secret: settings.sessionSecret, ttlMs: settings.sessionTtlMs, secure: settings.hosted });
+  const loginRuns = createLoginRunStore(); // workspace -> the pi.flow run waiting for credentials; capped and expired (auth/loginRuns.js)
   const auth = { settings, sessions, loginRuns, fetchImpl };
   // Who is signed in to this workspace, if anyone. A Mock persona counts only in Mock and a Real page login only in Real.
   api.use((req, _res, next) => {
@@ -57,6 +74,12 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
     next();
   });
   api.use('/health', health.router);
+  // Hosted: every Real call (discover, call, agent turn; stories use the same routes) needs a Real page login. Mock needs none.
+  api.use(['/discover', '/call', '/agent'], (req, res, next) => {
+    if (req.method !== 'POST' || !settings.hosted || lab.mode.get() !== 'real' || req.me?.source === 'real-login') return next();
+    noStore(res);
+    res.status(401).json({ error: 'signin_required', message: 'Sign in to run the Real lab (Sign in, in the left rail). Mock needs no sign-in.' });
+  });
   mountLabRoutes(api, lab, { settings, customer, auth });
   mountAuthRoutes(api, lab, auth);
   // Only SHELF_URL is passed on: the shared shelf helper would otherwise fall back to a settings file outside this repo (rule: per-lab .env only).
@@ -92,7 +115,7 @@ const noStore = (res) => res.set('Cache-Control', 'no-store');
 const clearCookie = (sessions, workspace) => sessions.cookie('', 0, workspace);
 
 function mountLabRoutes(api, lab, { settings, customer, auth }) {
-  api.get('/info', (_req, res) => { noStore(res); res.json(lab.info()); });
+  api.get('/info', (req, res) => { noStore(res); res.json({ ...lab.info(), hosted: settings.hosted ? { signinRequired: true, signedIn: req.me?.source === 'real-login' } : null }); });
   api.get('/runs', (req, res) => { noStore(res); res.json({ workspace: req.workspaceId, runs: lab.runs(req.workspaceId) }); });
   api.get('/trace', (req, res) => { noStore(res); res.json({ workspace: req.workspaceId, entries: lab.trace(req.workspaceId) }); });
   // Rule 12 and 3: branding and vocabulary from customer.config, the presenter flag, the workspace in use.
@@ -109,6 +132,8 @@ function mountLabRoutes(api, lab, { settings, customer, auth }) {
 
   // Rule 19: exactly {source: "mock"|"real"}; Real not configured is a 409 with the how-to, never a silent Mock.
   api.post('/mode', (req, res) => {
+    // Hosted: the mode is one setting shared by every visitor, so nobody may switch it (a switch would also sign every Real login out).
+    if (settings.hosted) { noStore(res); return res.status(409).json({ error: 'mode_fixed', message: 'This hosted lab runs in Real only, so the mode cannot be switched here. Run the lab locally (Docker) for Mock.' }); }
     const body = req.body;
     if (!isObject(body) || Object.keys(body).length !== 1 || typeof body.source !== 'string') throw new LabError(400, 'bad_request', 'send exactly {"source": "mock"} or {"source": "real"}');
     const r = lab.mode.set(body.source);
@@ -128,12 +153,22 @@ function mountLabRoutes(api, lab, { settings, customer, auth }) {
     res.json(await lab.call({ door: b.door, scenario: b.scenario, tool: b.tool ?? undefined, args: b.arguments }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null }));
   });
   // The Real agent chat: one user message in, the agent's reply and every run it made out. Real only; the page sends the text history.
+  const agentUse = new Map(); // hosted: "<day>|<sub>" -> agent messages today (memory only; one pod)
   api.post('/agent', async (req, res) => {
     const b = isObject(req.body) ? req.body : {};
     noStore(res);
+    if (settings.hosted && req.me?.sub) {
+      const day = new Date().toISOString().slice(0, 10);
+      for (const k of agentUse.keys()) if (!k.startsWith(`${day}|`)) agentUse.delete(k);
+      const k = `${day}|${req.me.sub}`;
+      if ((agentUse.get(k) ?? 0) >= settings.agentDailyLimit) return res.status(429).json({ error: 'agent_daily_limit', message: `The agent chat allows ${settings.agentDailyLimit} messages per person per day on this hosted lab. The Tools tab still works.` });
+      const out = await lab.agentTurn({ door: b.door, messages: b.messages }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null });
+      if (out.modelCalls > 0) agentUse.set(k, (agentUse.get(k) ?? 0) + 1); // a turn that never reached the model does not count
+      return res.json(out);
+    }
     res.json(await lab.agentTurn({ door: b.door, messages: b.messages }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null }));
   });
-  api.post('/reset', (req, res) => { noStore(res); res.set('set-cookie', clearCookie(auth.sessions, req.workspaceId)); auth.loginRuns.delete(req.workspaceId); res.json(lab.reset(req.workspaceId)); });
+  api.post('/reset', (req, res) => { noStore(res); res.append('set-cookie', clearCookie(auth.sessions, req.workspaceId)); auth.loginRuns.delete(req.workspaceId); res.json(lab.reset(req.workspaceId)); });
 }
 
 // ---- sign-in (rule 11 and 16) -------------------------------------------------------------------------------------------------
@@ -167,7 +202,7 @@ function mountAuthRoutes(api, lab, auth) {
   });
   // "Nobody is signed in" is a normal 200 with me: null, so the browser console stays clean.
   api.get('/session', (req, res) => { noStore(res); res.json({ me: req.me }); });
-  api.post('/auth/logout', (req, res) => { noStore(res); loginRuns.delete(req.workspaceId); res.set('set-cookie', clearCookie(sessions, req.workspaceId)); res.json({ ok: true }); });
+  api.post('/auth/logout', (req, res) => { noStore(res); loginRuns.delete(req.workspaceId); res.append('set-cookie', clearCookie(sessions, req.workspaceId)); res.json({ ok: true }); });
 
   if (settings.mockSignin) {
     const guard = (req, res, next) => {
@@ -181,7 +216,7 @@ function mountAuthRoutes(api, lab, auth) {
     api.post('/auth/mock/login', guard, (req, res) => {
       const p = personaById(req.body?.persona);
       if (!p) return res.status(404).json({ error: 'not_found', message: 'no such persona' });
-      res.set('set-cookie', sessions.cookie(sessions.issuePersona(p.id, req.workspaceId), maxAge, req.workspaceId));
+      res.append('set-cookie', sessions.cookie(sessions.issuePersona(p.id, req.workspaceId), maxAge, req.workspaceId));
       noStore(res);
       res.json({ ok: true, me: { source: 'mock-persona', id: p.id, name: p.name, email: p.email, role: p.role, expiresAt: new Date(Date.now() + settings.sessionTtlMs).toISOString() } });
     });
@@ -210,7 +245,7 @@ function mountAuthRoutes(api, lab, auth) {
       const out = await loginApi().submit(run, { username: req.body?.username, password: req.body?.password });
       if (out.state !== 'signed_in') return res.status(200).json({ ok: false, ...out });
       loginRuns.delete(req.workspaceId);
-      res.set('set-cookie', sessions.cookie(sessions.issueClaims(out.claims, req.workspaceId), maxAge, req.workspaceId));
+      res.append('set-cookie', sessions.cookie(sessions.issueClaims(out.claims, req.workspaceId), maxAge, req.workspaceId));
       return res.json({ ok: true, me: { source: 'real-login', sub: out.claims.sub, name: out.claims.name ?? null, username: out.claims.username ?? null, email: out.claims.email ?? null } });
     } catch (e) {
       // A wrong password or a malformed field leaves the flow waiting; every other failure ends the run.
