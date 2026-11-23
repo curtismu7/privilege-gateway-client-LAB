@@ -8,7 +8,7 @@ import { createSessions } from '../src/auth/session.js';
 const SECRET = 'TESTONLY-session-secret-0005-abcdefabcdef';
 const LLM_KEY = 'TESTONLY-llm-virtual-key-0006-abcdef';
 const HOSTED = { PGC_HOSTED: '1', PGC_SESSION_SECRET: SECRET, LAB_ALLOWED_HOSTS: 'lab.example' };
-const ALL = 'demo-all-tools';
+const ALL = 'lab-banking-full';
 
 let stub; let lab;
 async function start(extra = {}, modelFetch) {
@@ -189,7 +189,7 @@ test('hosted: a turn that never reaches the model does not count against the dai
   try {
     const b = browser(); await b.get('/api/info'); b.signIn('user-z');
     for (let i = 0; i < 3; i += 1) {
-      const r = await b.post('/api/agent', { door: 'demo-blocked', messages: [{ role: 'user', text: 'hi' }] });
+      const r = await b.post('/api/agent', { door: 'lab-banking-blocked', messages: [{ role: 'user', text: 'hi' }] });
       assert.equal(r.status, 200); assert.equal((await r.json()).stopped, 'discovery-refused');
     }
     assert.equal(calls, 0);

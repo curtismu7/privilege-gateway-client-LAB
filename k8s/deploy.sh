@@ -30,7 +30,7 @@ render() {
 if [ "${1:-}" = "--dry-run" ]; then render deployment.yaml; render service.yaml; render certificate.yaml; render ingress.yaml; exit 0; fi
 
 # The Secret must exist and name every setting the hosted instance needs. Only key NAMES are listed; no value is read or printed.
-REQUIRED="PGC_GW_URL PGC_GW_APPS PGC_GW_KEY_DEMO_ALL_TOOLS PGC_GW_KEY_DEMO_SOME_TOOLS PGC_GW_KEY_DEMO_BLOCKED PGC_LLM_GATEWAY_URL PGC_LLM_VIRTUAL_KEY PGC_AGENT_MODEL PGC_PINGONE_ENVIRONMENT_ID PGC_PINGONE_REGION PGC_USER_CLIENT_ID PGC_SESSION_SECRET"
+REQUIRED="PGC_GW_URL PGC_GW_APPS PGC_GW_KEY_LAB_BANKING_FULL PGC_GW_KEY_LAB_BANKING_LIMITED PGC_GW_KEY_LAB_BANKING_BLOCKED PGC_LLM_GATEWAY_URL PGC_LLM_VIRTUAL_KEY PGC_AGENT_MODEL PGC_PINGONE_ENVIRONMENT_ID PGC_PINGONE_REGION PGC_USER_CLIENT_ID PGC_SESSION_SECRET"
 names=$(kubectl -n "$NAMESPACE" get secret privilege-gateway-client-real -o go-template='{{range $k, $v := .data}}{{$k}}{{"\n"}}{{end}}') \
   || { echo "refusing: Secret privilege-gateway-client-real not found in $NAMESPACE (see docs/hosted.md)" >&2; exit 2; }
 missing=""; for k in $REQUIRED; do grep -qx "$k" <<<"$names" || missing="$missing $k"; done

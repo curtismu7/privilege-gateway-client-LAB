@@ -21,7 +21,7 @@ in Real, behind a PingOne sign-in. Colleagues use it in a browser; nobody else r
 | Name | What |
 |---|---|
 | `PGC_GW_URL`, `PGC_GW_APPS` | The Privilege gateway origin and the three door names |
-| `PGC_GW_KEY_DEMO_ALL_TOOLS`, `PGC_GW_KEY_DEMO_SOME_TOOLS`, `PGC_GW_KEY_DEMO_BLOCKED` | One agent access key per door |
+| `PGC_GW_KEY_LAB_BANKING_FULL`, `PGC_GW_KEY_LAB_BANKING_LIMITED`, `PGC_GW_KEY_LAB_BANKING_BLOCKED` | One agent access key per door |
 | `PGC_LLM_GATEWAY_URL`, `PGC_LLM_VIRTUAL_KEY` | The LLM gateway origin and the llm-scoped agent key |
 | `PGC_AGENT_MODEL` | A model the llm key allows |
 | `PGC_PINGONE_ENVIRONMENT_ID`, `PGC_PINGONE_REGION`, `PGC_USER_CLIENT_ID` | The sign-in: the environment where the hosted-access colleagues are, and the hosted sign-in app (public, PKCE, pi.flow, restricted to the hosted-access group) |
