@@ -5,7 +5,7 @@ import { MOCK_IDENTITY, MOCK_PAGE_LOGIN } from '../src/doors.js';
 
 const mockId = (mismatch = false) => identityFor({ source: 'mock', mismatch, mockIdentity: MOCK_IDENTITY, pageLogin: MOCK_PAGE_LOGIN });
 const realId = (declared = null) => identityFor({ source: 'real', declared, mockIdentity: MOCK_IDENTITY, pageLogin: MOCK_PAGE_LOGIN });
-const base = { door: 'demo-some-tools', action: 'call', tool: 'sensitive_tax_record' };
+const base = { door: 'lab-banking-limited', action: 'call', tool: 'sensitive_tax_record' };
 const mock = (o) => verdictFor({ source: 'mock', ...base, ...o }, mockId());
 const real = (o, id = realId()) => verdictFor({ source: 'real', ...base, ...o }, id);
 
@@ -26,16 +26,16 @@ test('every outcome maps to one verdict in each source (the Mock-only held aside
 
 test('Mock sentences: discovery counts, refusal, no-policy door, key problems, hold, upstream', () => {
   const some = mock({ action: 'discover', outcome: 'ok', tools: { total: 7 } });
-  assert.equal(some.sentence, 'The simulated gateway listed 7 tools on demo-some-tools for aidemo. It lists only the tools the grant allows, so a tool that is not in the list is refused with 403 when it is called.');
+  assert.equal(some.sentence, 'The simulated gateway listed 7 tools on lab-banking-limited for aidemo. It lists only the tools the grant allows, so a tool that is not in the list is refused with 403 when it is called.');
   assert.equal(some.basis, 'checked');
-  const all = mock({ action: 'discover', door: 'demo-all-tools', outcome: 'ok', tools: { total: 18 } });
-  assert.match(all.sentence, /^The simulated gateway listed 18 tools on demo-all-tools for aidemo\./);
-  const refused = mock({ outcome: 'policy', status: 403, policy: 'demo-some-tools' });
-  assert.match(refused.sentence, /sensitive_tax_record is not in the grant for aidemo on demo-some-tools/);
+  const all = mock({ action: 'discover', door: 'lab-banking-full', outcome: 'ok', tools: { total: 18 } });
+  assert.match(all.sentence, /^The simulated gateway listed 18 tools on lab-banking-full for aidemo\./);
+  const refused = mock({ outcome: 'policy', status: 403, policy: 'lab-banking-limited' });
+  assert.match(refused.sentence, /sensitive_tax_record is not in the grant for aidemo on lab-banking-limited/);
   assert.match(refused.sentence, /403 before it reached the backend/);
   assert.match(refused.sentence, /policy working as designed/);
-  const none = mock({ action: 'discover', door: 'demo-blocked', outcome: 'policy', status: 403, policy: null });
-  assert.match(none.sentence, /demo-blocked has no policy.*403 before any tool was listed/);
+  const none = mock({ action: 'discover', door: 'lab-banking-blocked', outcome: 'policy', status: 403, policy: null });
+  assert.match(none.sentence, /lab-banking-blocked has no policy.*403 before any tool was listed/);
   assert.match(mock({ outcome: 'key', status: 401, scenario: 'no-key' }).sentence, /carried no agent key/);
   assert.match(mock({ outcome: 'key', status: 401, scenario: 'bad-key' }).sentence, /agent key was not accepted/);
   assert.match(mock({ outcome: 'key', status: 401 }).sentence, /No policy was evaluated/);
@@ -99,7 +99,7 @@ test('the identity-mismatch scenario exists in Mock only and is labelled simulat
 });
 
 test('the function is pure: same facts, same verdict, and the inputs are not changed', () => {
-  const facts = Object.freeze({ source: 'mock', ...base, outcome: 'policy', status: 403, policy: 'demo-some-tools', tools: Object.freeze({ total: 1, permitted: 1 }) });
+  const facts = Object.freeze({ source: 'mock', ...base, outcome: 'policy', status: 403, policy: 'lab-banking-limited', tools: Object.freeze({ total: 1, permitted: 1 }) });
   const id = Object.freeze(mockId());
   assert.deepEqual(verdictFor(facts, id), verdictFor(facts, id));
   assert.throws(() => verdictFor({ ...facts, outcome: 'nonsense' }, id), /unknown outcome/);

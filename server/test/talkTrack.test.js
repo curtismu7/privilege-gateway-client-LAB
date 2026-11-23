@@ -17,7 +17,7 @@ test('docs/talk-track.md is the one source and parses into sections', () => {
 
 test('there is a section for every story and for every door', () => {
   for (const s of STORIES) assert.ok(byId(s.id), `no talk-track section for ${s.id}`);
-  for (const door of ['demo-all-tools', 'demo-some-tools', 'demo-blocked']) assert.ok(sections.some((s) => s.say.includes(door)), `no section names ${door}`);
+  for (const door of ['lab-banking-full', 'lab-banking-limited', 'lab-banking-blocked']) assert.ok(sections.some((s) => s.say.includes(door)), `no section names ${door}`);
 });
 
 test('the talk track is honest: it says what is simulated, what Real can claim and what is unverified', () => {

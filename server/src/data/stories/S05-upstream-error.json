@@ -1,7 +1,7 @@
 {
   "id": "S05",
   "title": "When the gateway cannot finish",
-  "door": "demo-all-tools",
+  "door": "lab-banking-full",
   "mockOnly": true,
   "goal": "{{castAgentId}} at {{castBrand}} calls a permitted tool while the gateway's upstream is down.",
   "obstacle": "A failure looks like a refusal if you only read the status. A client must tell \"the policy said no\" from \"nothing answered\".",
@@ -9,7 +9,7 @@
   "say": "This is not a refusal. Nothing was decided, because nothing answered.",
   "run": {
     "action": "call",
-    "door": "demo-all-tools",
+    "door": "lab-banking-full",
     "tool": "list_entitlements",
     "scenario": "upstream-error"
   },
@@ -25,7 +25,7 @@
       "why": "Rule: a downstream failure is always named, never a blank page or an empty 200.",
       "run": {
         "action": "call",
-        "door": "demo-all-tools",
+        "door": "lab-banking-full",
         "tool": "list_entitlements",
         "scenario": "upstream-error"
       },
@@ -41,7 +41,7 @@
       "why": "Telling a transient fault from a policy refusal is the point of the verdict word.",
       "run": {
         "action": "call",
-        "door": "demo-all-tools",
+        "door": "lab-banking-full",
         "tool": "list_entitlements"
       },
       "expect": {

@@ -176,7 +176,7 @@ def wide_checks(browser, theme):
     close_all(page)
 
     # --- a run, then each panel on its own: placement and screenshots
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     page.evaluate("window.scrollTo(0, 0)")
     screenshot_states = {"reel": "allowed-reel", "tokens": "allowed-tokens", "sequence": "allowed-sequence", "trace": "allowed-trace"}
     for pid in ("reel", "tokens", "sequence", "trace"):
@@ -283,10 +283,10 @@ def scenario_checks(browser, theme):
         page.wait_for_function(f"document.querySelector('[data-testid=\"panel-{pid}\"] [data-testid=\"step-toggle\"]').textContent.trim() === 'Replay'", timeout=15000)
 
     cases = [
-        ("blocked", dict(door="demo-some-tools", tool="sensitive_tax_record"), "blocked", "Policy decision", "denied"),
-        ("held", dict(door="demo-all-tools", tool="open_ticket"), "held", "Held", "held"),
-        ("upstream", dict(door="demo-all-tools", tool="list_entitlements", scenario="upstream-error"), "upstream", "Tool", "failed"),
-        ("mismatch", dict(door="demo-all-tools", tool="list_entitlements", scenario="identity-mismatch"), "allowed", "Verdict", "done"),
+        ("blocked", dict(door="lab-banking-limited", tool="sensitive_tax_record"), "blocked", "Policy decision", "denied"),
+        ("held", dict(door="lab-banking-full", tool="open_ticket"), "held", "Held", "held"),
+        ("upstream", dict(door="lab-banking-full", tool="list_entitlements", scenario="upstream-error"), "upstream", "Tool", "failed"),
+        ("mismatch", dict(door="lab-banking-full", tool="list_entitlements", scenario="identity-mismatch"), "allowed", "Verdict", "done"),
     ]
     for name, kw, verdict, stop_title, status_word in cases:
         close_all(page)
@@ -326,7 +326,7 @@ def scenario_checks(browser, theme):
     close_all(page)
     # a blocked door (no tools listed) and the needs-sign-in scenario
     page.goto(BASE); page.wait_for_selector('[data-testid="get-tools"]')
-    discover(page, "demo-blocked")
+    discover(page, "lab-banking-blocked")
     open_panel(page, "reel")
     check(f"{T} blocked door: the 'not in this run' chip is there and the walk has 4 messages", page.query_selector('[data-testid="panel-reel"] button[aria-expanded]') is not None and counter(page) == "Not started, 4 messages", counter(page))
     page.click('[data-testid="panel-reel"] button[aria-expanded]')
@@ -334,7 +334,7 @@ def scenario_checks(browser, theme):
     shot(page, "blocked-door-reel", vp, theme)
     close_all(page)
     page.goto(BASE); page.wait_for_selector('[data-testid="get-tools"]')
-    run_tool(page, "demo-all-tools", "list_entitlements", scenario="no-key")
+    run_tool(page, "lab-banking-full", "list_entitlements", scenario="no-key")
     check(f"{T} no-key: needs sign-in", page.get_attribute('[data-testid="verdict-card"]', "data-verdict") == "needs-sign-in")
     play_to_stop("reel")
     check(f"{T} no-key: stops at the Privilege decision", ", Policy decision," in page.query_selector('[data-testid="panel-reel"] .rl-f[aria-current="step"]').get_attribute("aria-label"))
@@ -343,7 +343,7 @@ def scenario_checks(browser, theme):
 
     # tokens: decoded, labelled, with changes
     page.goto(BASE); page.wait_for_selector('[data-testid="get-tools"]')
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_panel(page, "tokens")
     page.click('[data-testid="tokhop-4"] button')
     cards = page.query_selector_all('[data-testid="tokhop-4"] [data-testid="token-card"]')
@@ -368,7 +368,7 @@ def geometry_checks(browser):
     theme = "light"
     ctx, page = new_page(browser, 1440, 900, theme)
     T = "[geometry 1440]"
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     page.evaluate("window.scrollTo(0, 0)")
     open_panel(page, "reel")
     P = '[data-testid="panel-reel"]'
@@ -422,7 +422,7 @@ def geometry_checks(browser):
     saved = rect(page, P)
     page.reload()
     page.wait_for_selector('[data-testid="get-tools"]')
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_panel(page, "reel")
     r5 = rect(page, P)
     check(f"{T} reload restores the remembered size", abs(r5["w"] - saved["w"]) <= 1 and abs(r5["h"] - saved["h"]) <= 1, f"{saved} -> {r5}")
@@ -437,7 +437,7 @@ def popout_checks(browser):
     theme = "light"
     ctx, page = new_page(browser, 1440, 900, theme)
     T = "[pop-out 1440]"
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     page.evaluate("window.scrollTo(0, 0)")
     open_panel(page, "reel")
     open_panel(page, "sequence")
@@ -514,7 +514,7 @@ def narrow_checks(browser, theme):
     open_panel(page, "reel")
     shot(page, "empty-reel", vp, theme)
     close_all(page)
-    run_tool(page, "demo-some-tools", "sensitive_tax_record")
+    run_tool(page, "lab-banking-limited", "sensitive_tax_record")
     check(f"{T} the dock fits in 375px with no sideways scroll", page.evaluate("document.documentElement.scrollWidth <= 375"))
     dock = rect(page, '[data-testid="panel-dock"]')
     check(f"{T} the dock stays on screen", dock["r"] <= 376 and dock["b"] <= 813)
@@ -551,7 +551,7 @@ def hostile_checks(browser):
     T = "[hostile 1440]"
     hostile = "<img src=x onerror=alert(1)>"
     long_key = "k" + "x" * 150
-    run_tool(page, "demo-all-tools", "list_entitlements", args_text='{"user": "%s", "%s": "v"}' % (hostile, long_key))
+    run_tool(page, "lab-banking-full", "list_entitlements", args_text='{"user": "%s", "%s": "v"}' % (hostile, long_key))
     for pid in ("reel", "tokens", "sequence", "trace"):
         open_panel(page, pid)
     front(page, "reel")
@@ -577,7 +577,7 @@ def real_checks(browser):
     ctx, page = new_page(browser, 1440, 900, "light", base=REAL)
     T = "[real 1440]"
     check(f"{T} the banner is live", page.get_attribute('[data-testid="sim-banner"]', "data-state") == "live")
-    discover(page, "demo-some-tools")
+    discover(page, "lab-banking-limited")
     page.click('[data-testid="tool-sensitive_tax_record"]'); page.click('[data-testid="run"]')
     page.wait_for_function("document.querySelector('[data-testid=verdict-card]')?.dataset.verdict !== 'working'")
     open_panel(page, "tokens"); open_panel(page, "trace"); open_panel(page, "reel")

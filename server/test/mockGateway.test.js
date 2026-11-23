@@ -10,7 +10,7 @@ const ARGS = Object.fromEntries(TOOLS.map((t) => [t.name, t.args]));
 
 test('the door configuration is the spec: 18 tools, 18 / 7 / 0 permitted', () => {
   assert.equal(TOOLS.length, 18);
-  assert.deepEqual(DOORS.map((d) => d.id), ['demo-all-tools', 'demo-some-tools', 'demo-blocked']);
+  assert.deepEqual(DOORS.map((d) => d.id), ['lab-banking-full', 'lab-banking-limited', 'lab-banking-blocked']);
   assert.deepEqual(DOORS.map((d) => grantedTools(d).length), [18, 7, 0]);
   assert.deepEqual(grantedTools(DOORS[1]), ['list_entitlements', 'who_has_role', 'get_access_grants', 'get_portfolio_summary', 'get_investment_accounts', 'get_investment_balance', 'get_investment_transactions']);
   assert.equal(new Set(TOOLS.map((t) => t.name)).size, 18);
@@ -23,14 +23,14 @@ test('the door configuration is the spec: 18 tools, 18 / 7 / 0 permitted', () =>
 test('no key or a wrong key is 401 with a WWW-Authenticate challenge, and nothing else is answered', async () => {
   const gw = createMockGateway();
   const body = { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} };
-  const none = await mockPost(gw, 'demo-all-tools', { body });
+  const none = await mockPost(gw, 'lab-banking-full', { body });
   assert.equal(none.status, 401);
-  assert.match(none.headers.get('www-authenticate'), /^Bearer realm="https:\/\/mock-gateway\.invalid\/demo-all-tools\/mcp"$/);
-  const bad = await mockPost(gw, 'demo-all-tools', { key: 'mock-wrong', body });
+  assert.match(none.headers.get('www-authenticate'), /^Bearer realm="https:\/\/mock-gateway\.invalid\/lab-banking-full\/mcp"$/);
+  const bad = await mockPost(gw, 'lab-banking-full', { key: 'mock-wrong', body });
   assert.equal(bad.status, 401);
   assert.match(bad.headers.get('www-authenticate'), /error="invalid_token"/);
   // another door's key is a wrong key here
-  const cross = await mockPost(gw, 'demo-all-tools', { key: gw.keyFor('demo-some-tools'), body });
+  const cross = await mockPost(gw, 'lab-banking-full', { key: gw.keyFor('lab-banking-limited'), body });
   assert.equal(cross.status, 401);
   assert.equal(gw.sessionCount(), 0);
   assert.equal(none.json._meta.simulated, true);
@@ -39,24 +39,24 @@ test('no key or a wrong key is 401 with a WWW-Authenticate challenge, and nothin
 
 test('the handshake: initialize gives a session id, notifications/initialized is 202, GET is 405', async () => {
   const gw = createMockGateway();
-  const key = gw.keyFor('demo-all-tools');
-  const init = await mockPost(gw, 'demo-all-tools', { key, body: { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } } });
+  const key = gw.keyFor('lab-banking-full');
+  const init = await mockPost(gw, 'lab-banking-full', { key, body: { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18' } } });
   assert.equal(init.status, 200);
   const sid = init.headers.get('mcp-session-id');
   assert.match(sid, /^mock-session-[0-9a-f]{18}$/);
   assert.equal(init.json.result.serverInfo.name, 'mock-privilege-gateway (simulated)');
   assert.equal(init.json.result._meta.simulated, true);
-  const note = await mockPost(gw, 'demo-all-tools', { key, session: sid, body: { jsonrpc: '2.0', method: 'notifications/initialized' } });
+  const note = await mockPost(gw, 'lab-banking-full', { key, session: sid, body: { jsonrpc: '2.0', method: 'notifications/initialized' } });
   assert.equal(note.status, 202);
   assert.equal(note.text, '');
-  const get = await gw.handle(new URL(`${MOCK_ORIGIN}/demo-all-tools/mcp`), { method: 'GET', headers: { authorization: `Bearer ${key}` } });
+  const get = await gw.handle(new URL(`${MOCK_ORIGIN}/lab-banking-full/mcp`), { method: 'GET', headers: { authorization: `Bearer ${key}` } });
   assert.equal(get.status, 405);
   assert.equal(get.headers.get('allow'), 'POST, DELETE');
 });
 
 test('JSON-RPC errors: -32700 parse, -32600 invalid request, -32601 method not found, -32602 bad params', async () => {
   const gw = createMockGateway();
-  const door = 'demo-all-tools';
+  const door = 'lab-banking-full';
   const key = gw.keyFor(door);
   const session = await openSession(gw, door);
   const parse = await mockPost(gw, door, { key, session, raw: '{"jsonrpc": "2.0", "id": 1, "meth' });
@@ -85,37 +85,37 @@ test('JSON-RPC errors: -32700 parse, -32600 invalid request, -32601 method not f
 
 test('session handling: no session id is 400, an unknown or other door\'s session is 404, DELETE closes it', async () => {
   const gw = createMockGateway();
-  const key = gw.keyFor('demo-all-tools');
-  const noSession = await mockPost(gw, 'demo-all-tools', { key, body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } });
+  const key = gw.keyFor('lab-banking-full');
+  const noSession = await mockPost(gw, 'lab-banking-full', { key, body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } });
   assert.equal(noSession.status, 400);
-  const unknown = await mockPost(gw, 'demo-all-tools', { key, session: 'mock-session-doesnotexist', body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } });
+  const unknown = await mockPost(gw, 'lab-banking-full', { key, session: 'mock-session-doesnotexist', body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } });
   assert.equal(unknown.status, 404);
   assert.equal(unknown.json.error.code, -32001);
-  const s = await openSession(gw, 'demo-all-tools');
-  const other = await mockPost(gw, 'demo-some-tools', { key: gw.keyFor('demo-some-tools'), session: s, body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } });
+  const s = await openSession(gw, 'lab-banking-full');
+  const other = await mockPost(gw, 'lab-banking-limited', { key: gw.keyFor('lab-banking-limited'), session: s, body: { jsonrpc: '2.0', id: 1, method: 'tools/list' } });
   assert.equal(other.status, 404, 'a session belongs to one door');
   gw.dropSessions();
-  assert.equal((await list(gw, 'demo-all-tools', s)).status, 404, 'a dropped session is "session not found"');
-  const s2 = await openSession(gw, 'demo-all-tools');
-  const del = await gw.handle(new URL(`${MOCK_ORIGIN}/demo-all-tools/mcp`), { method: 'DELETE', headers: { authorization: `Bearer ${key}`, 'mcp-session-id': s2 } });
+  assert.equal((await list(gw, 'lab-banking-full', s)).status, 404, 'a dropped session is "session not found"');
+  const s2 = await openSession(gw, 'lab-banking-full');
+  const del = await gw.handle(new URL(`${MOCK_ORIGIN}/lab-banking-full/mcp`), { method: 'DELETE', headers: { authorization: `Bearer ${key}`, 'mcp-session-id': s2 } });
   assert.equal(del.status, 204);
-  assert.equal((await list(gw, 'demo-all-tools', s2)).status, 404);
+  assert.equal((await list(gw, 'lab-banking-full', s2)).status, 404);
 });
 
 test('an unknown door, a bad path and a foreign origin are not served', async () => {
   const gw = createMockGateway();
-  assert.equal(gw.handles(new URL('https://mock-gateway.invalid/demo-all-tools/mcp')), true);
-  assert.equal(gw.handles(new URL('https://gateway.example/demo-all-tools/mcp')), false);
-  for (const p of ['/nope/mcp', '/demo-all-tools', '/demo-all-tools/mcp/extra', '/__proto__/mcp', '/']) {
+  assert.equal(gw.handles(new URL('https://mock-gateway.invalid/lab-banking-full/mcp')), true);
+  assert.equal(gw.handles(new URL('https://gateway.example/lab-banking-full/mcp')), false);
+  for (const p of ['/nope/mcp', '/lab-banking-full', '/lab-banking-full/mcp/extra', '/__proto__/mcp', '/']) {
     const r = await gw.handle(new URL(`${MOCK_ORIGIN}${p}`), { method: 'POST', headers: {}, body: '{}' });
     assert.equal(r.status, 404, p);
   }
 });
 
-test('tools/list: demo-all-tools returns all 18', async () => {
+test('tools/list: lab-banking-full returns all 18', async () => {
   const gw = createMockGateway();
-  const s = await openSession(gw, 'demo-all-tools');
-  const r = await list(gw, 'demo-all-tools', s);
+  const s = await openSession(gw, 'lab-banking-full');
+  const r = await list(gw, 'lab-banking-full', s);
   assert.equal(r.status, 200);
   const tools = r.json.result.tools;
   assert.equal(tools.length, 18);
@@ -123,27 +123,27 @@ test('tools/list: demo-all-tools returns all 18', async () => {
   assert.deepEqual(tools.map((t) => t.name), TOOLS.map((t) => t.name));
 });
 
-test('tools/list: demo-some-tools lists only the 7 granted tools and leaves the 11 out, as the real gateway does', async () => {
+test('tools/list: lab-banking-limited lists only the 7 granted tools and leaves the 11 out, as the real gateway does', async () => {
   const gw = createMockGateway();
-  const s = await openSession(gw, 'demo-some-tools');
-  const tools = (await list(gw, 'demo-some-tools', s)).json.result.tools;
+  const s = await openSession(gw, 'lab-banking-limited');
+  const tools = (await list(gw, 'lab-banking-limited', s)).json.result.tools;
   assert.equal(tools.length, 7);
   assert.ok(tools.every((t) => t._meta.simulated === true && t._meta.permitted === undefined));
   assert.deepEqual(tools.map((t) => t.name), ['list_entitlements', 'who_has_role', 'get_access_grants', 'get_portfolio_summary', 'get_investment_accounts', 'get_investment_balance', 'get_investment_transactions']);
   assert.ok(!tools.some((t) => t.name === 'open_ticket' || t.name.startsWith('sensitive_')));
   // A tool the list left out is still refused when it is called by name.
-  const refused = await call(gw, 'demo-some-tools', s, 'open_ticket', {});
+  const refused = await call(gw, 'lab-banking-limited', s, 'open_ticket', {});
   assert.equal(refused.status, 403);
 });
 
-test('demo-blocked is refused with 403 before any list, for a valid key, on every method', async () => {
+test('lab-banking-blocked is refused with 403 before any list, for a valid key, on every method', async () => {
   const gw = createMockGateway();
-  const key = gw.keyFor('demo-blocked');
-  const init = await mockPost(gw, 'demo-blocked', { key, body: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} } });
+  const key = gw.keyFor('lab-banking-blocked');
+  const init = await mockPost(gw, 'lab-banking-blocked', { key, body: { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} } });
   assert.equal(init.status, 403);
   assert.equal(init.json.error, 'forbidden');
   assert.equal(init.headers.get('mcp-session-id'), null);
-  const l = await mockPost(gw, 'demo-blocked', { key, session: 'x', body: { jsonrpc: '2.0', id: 2, method: 'tools/list' } });
+  const l = await mockPost(gw, 'lab-banking-blocked', { key, session: 'x', body: { jsonrpc: '2.0', id: 2, method: 'tools/list' } });
   assert.equal(l.status, 403);
   assert.equal(gw.sessionCount(), 0);
   const decisions = JSON.parse(Buffer.from(init.headers.get('x-mock-decisions'), 'base64url').toString());
@@ -152,9 +152,9 @@ test('demo-blocked is refused with 403 before any list, for a valid key, on ever
 
 test('tools/call: allow is 200 and labelled simulated, for every permitted tool', async () => {
   const gw = createMockGateway();
-  const s = await openSession(gw, 'demo-some-tools');
+  const s = await openSession(gw, 'lab-banking-limited');
   for (const name of grantedTools(DOORS[1])) {
-    const r = await call(gw, 'demo-some-tools', s, name, ARGS[name]);
+    const r = await call(gw, 'lab-banking-limited', s, name, ARGS[name]);
     assert.equal(r.status, 200, name);
     assert.equal(r.json.result._meta.simulated, true);
     const out = JSON.parse(r.json.result.content[0].text);
@@ -166,11 +166,11 @@ test('tools/call: allow is 200 and labelled simulated, for every permitted tool'
 
 test('tools/call: a tool outside the grant is 403 for each of the 11, and never reaches the backend', async () => {
   const gw = createMockGateway();
-  const s = await openSession(gw, 'demo-some-tools');
+  const s = await openSession(gw, 'lab-banking-limited');
   const outside = TOOLS.filter((t) => !isPermitted(DOORS[1], t.name));
   assert.equal(outside.length, 11);
   for (const t of outside) {
-    const r = await call(gw, 'demo-some-tools', s, t.name, t.args);
+    const r = await call(gw, 'lab-banking-limited', s, t.name, t.args);
     assert.equal(r.status, 403, t.name);
     assert.equal(r.json.error, 'forbidden');
     const d = JSON.parse(Buffer.from(r.headers.get('x-mock-decisions'), 'base64url').toString());
@@ -179,10 +179,10 @@ test('tools/call: a tool outside the grant is 403 for each of the 11, and never 
   }
 });
 
-test('tools/call: open_ticket on demo-all-tools is held, labelled simulated, and says its body is invented', async () => {
+test('tools/call: open_ticket on lab-banking-full is held, labelled simulated, and says its body is invented', async () => {
   const gw = createMockGateway();
-  const s = await openSession(gw, 'demo-all-tools');
-  const r = await call(gw, 'demo-all-tools', s, 'open_ticket', { user: 'carol.nguyen', resource: 'prod-db-primary', action: 'review', justification: 'x' });
+  const s = await openSession(gw, 'lab-banking-full');
+  const r = await call(gw, 'lab-banking-full', s, 'open_ticket', { user: 'carol.nguyen', resource: 'prod-db-primary', action: 'review', justification: 'x' });
   assert.equal(r.status, 200);
   assert.equal(r.json.result._meta.held, true);
   assert.equal(r.json.result._meta.inventedBody, true);
@@ -194,28 +194,28 @@ test('tools/call: open_ticket on demo-all-tools is held, labelled simulated, and
 
 test('tools/call: an armed fault is a 502 once, with a JSON body, and only on the armed door and method', async () => {
   const gw = createMockGateway();
-  const s = await openSession(gw, 'demo-all-tools');
-  gw.armFault('demo-some-tools', 'tools/call');
-  assert.equal((await call(gw, 'demo-all-tools', s, 'who_has_role', ARGS.who_has_role)).status, 200, 'another door is not affected');
-  gw.armFault('demo-all-tools', 'tools/call');
-  assert.equal((await list(gw, 'demo-all-tools', s)).status, 200, 'another method is not affected');
-  const bad = await call(gw, 'demo-all-tools', s, 'who_has_role', ARGS.who_has_role);
+  const s = await openSession(gw, 'lab-banking-full');
+  gw.armFault('lab-banking-limited', 'tools/call');
+  assert.equal((await call(gw, 'lab-banking-full', s, 'who_has_role', ARGS.who_has_role)).status, 200, 'another door is not affected');
+  gw.armFault('lab-banking-full', 'tools/call');
+  assert.equal((await list(gw, 'lab-banking-full', s)).status, 200, 'another method is not affected');
+  const bad = await call(gw, 'lab-banking-full', s, 'who_has_role', ARGS.who_has_role);
   assert.equal(bad.status, 502);
   assert.equal(bad.json.error, 'bad_gateway');
   assert.equal(bad.json.message, UPSTREAM_MESSAGE);
   assert.match(bad.json.message, /SIMULATED/);
   assert.match(bad.headers.get('content-type'), /json/);
-  assert.equal((await call(gw, 'demo-all-tools', s, 'who_has_role', ARGS.who_has_role)).status, 200, 'one-shot');
-  gw.armFault('demo-all-tools', 'tools/list');
-  assert.equal((await list(gw, 'demo-all-tools', s)).status, 502);
-  gw.armFault('demo-all-tools', 'tools/list');
+  assert.equal((await call(gw, 'lab-banking-full', s, 'who_has_role', ARGS.who_has_role)).status, 200, 'one-shot');
+  gw.armFault('lab-banking-full', 'tools/list');
+  assert.equal((await list(gw, 'lab-banking-full', s)).status, 502);
+  gw.armFault('lab-banking-full', 'tools/list');
   gw.clearFault();
-  assert.equal((await list(gw, 'demo-all-tools', s)).status, 200);
+  assert.equal((await list(gw, 'lab-banking-full', s)).status, 200);
 });
 
 test('hostile input is bounded: oversized body, hostile tool names, and prototype keys never throw', async () => {
   const gw = createMockGateway();
-  const door = 'demo-all-tools';
+  const door = 'lab-banking-full';
   const key = gw.keyFor(door);
   const s = await openSession(gw, door);
   const big = await mockPost(gw, door, { key, session: s, raw: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"x","arguments":{"a":"${'z'.repeat(70 * 1024)}"}}}` });
@@ -233,23 +233,23 @@ test('hostile input is bounded: oversized body, hostile tool names, and prototyp
 test('mock tokens are signed with a per-process random key, labelled mock, and verify only on their own gateway', () => {
   const a = createMockGateway();
   const b = createMockGateway();
-  const t = a.issueToken({ door: 'demo-all-tools', sub: 'aidemo' });
+  const t = a.issueToken({ door: 'lab-banking-full', sub: 'aidemo' });
   assert.match(t, /^eyJ[\w-]+\.[\w-]+\.[\w-]+$/);
   const claims = a.verifyToken(t);
   assert.equal(claims.mock, true);
   assert.equal(claims.sub, 'aidemo');
-  assert.equal(claims.aud, 'https://mock-gateway.invalid/demo-all-tools/mcp');
+  assert.equal(claims.aud, 'https://mock-gateway.invalid/lab-banking-full/mcp');
   assert.match(claims.note, /MOCK/);
   assert.equal(b.verifyToken(t), null, 'another process\'s key does not verify it');
   const parts = t.split('.');
   assert.equal(a.verifyToken(`${parts[0]}.${parts[1]}.${parts[2].slice(0, -2)}xx`), null);
   assert.equal(a.verifyToken(`${parts[0]}.${Buffer.from('{"sub":"admin","exp":99999999999}').toString('base64url')}.${parts[2]}`), null);
   assert.equal(a.verifyToken('not.a.token'), null);
-  assert.notEqual(a.keyFor('demo-all-tools'), b.keyFor('demo-all-tools'), 'mock agent keys differ per process');
-  assert.match(a.keyFor('demo-all-tools'), /^mock-agent-key-demo-all-tools-[0-9a-f]{12}$/);
+  assert.notEqual(a.keyFor('lab-banking-full'), b.keyFor('lab-banking-full'), 'mock agent keys differ per process');
+  assert.match(a.keyFor('lab-banking-full'), /^mock-agent-key-lab-banking-full-[0-9a-f]{12}$/);
   let clock = 0;
   const timed = createMockGateway({ now: () => clock });
-  const shortLived = timed.issueToken({ door: 'demo-all-tools', sub: 'x', ttlSeconds: 1 });
+  const shortLived = timed.issueToken({ door: 'lab-banking-full', sub: 'x', ttlSeconds: 1 });
   assert.ok(timed.verifyToken(shortLived));
   clock = 5000;
   assert.equal(timed.verifyToken(shortLived), null, 'an expired token does not verify');

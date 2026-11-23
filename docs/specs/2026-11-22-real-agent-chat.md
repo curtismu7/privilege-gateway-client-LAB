@@ -16,7 +16,7 @@ Make the demo runnable by talking to an agent. In Real mode, the Chat tab runs a
 - **UI:** the Chat tab in Real shows "Real agent (Claude)" and a cost note. Each tool call gets a verdict chip linked to its run in Evidence. Mock keeps today's chat and label.
 
 ## Acceptance criteria
-1. Real Tools tab: discovering `demo-all-tools` and opening `get_access_grants` shows `resource` (required), not `principal`. Test: a stubbed gateway lists a schema and `lab.discover` returns its properties and required list.
+1. Real Tools tab: discovering `lab-banking-full` and opening `get_access_grants` shows `resource` (required), not `principal`. Test: a stubbed gateway lists a schema and `lab.discover` returns its properties and required list.
 2. Mock Tools tab is unchanged: the existing sample-args tests still pass.
 3. Real Chat, stubbed model plus stubbed gateway: "who can access prod-db-primary?" makes one `tools/call get_access_grants {resource:"prod-db-primary"}` through `run('call')`, and the reply carries that run's id and verdict.
 4. Every model request goes through the netguard: a test counts zero socket attempts outside `decideModel`'s one origin, and the Mock chat makes zero model calls.
@@ -52,13 +52,13 @@ Netguard zero-outbound in Mock, write-only keys, pi.flow login, vendored files (
 - Tests on the Air (Node 26): server 209 (208 pass, 0 fail, 1 skipped as before), web 374/374, scripts 27/27. Build passes. Conformance: 0 failed, 1 advisory (rule 18 k8s, deferred).
 - Live, real gateway + real model (`claude-sonnet-5-5`), Chromium via Playwright, lab on 127.0.0.1:7933 with the lab's own `.env`:
   - Criterion 1: Real Tools tab, `get_access_grants` form `{"resource": "prod-db-primary"}`, "Required: resource".
-  - `demo-all-tools`, "Who has access to prod-db-primary?": discovery 18 tools Allowed, `get_access_grants {"resource":"prod-db-primary"}` Allowed, a correct answer. The agent also refused a prompt-injection planted in the backend data (a grant's justification told it to open a ticket for erin.walsh) and said so.
-  - `demo-some-tools`: discovery 7 tools; the agent was never offered `sensitive_*` (the real gateway hides refused tools), used `get_portfolio_summary` and `who_has_role`, both Allowed.
-  - `demo-blocked`: discovery 403 (Blocked by policy), no model call, the lab says the agent has no tools.
+  - `lab-banking-full`, "Who has access to prod-db-primary?": discovery 18 tools Allowed, `get_access_grants {"resource":"prod-db-primary"}` Allowed, a correct answer. The agent also refused a prompt-injection planted in the backend data (a grant's justification told it to open a ticket for erin.walsh) and said so.
+  - `lab-banking-limited`: discovery 7 tools; the agent was never offered `sensitive_*` (the real gateway hides refused tools), used `get_portfolio_summary` and `who_has_role`, both Allowed.
+  - `lab-banking-blocked`: discovery 403 (Blocked by policy), no model call, the lab says the agent has no tools.
   - 375 px: no horizontal overflow; no console errors.
 - Independent review (`/code-review high`, 10 findings): fixed 1-3 (history: earlier replies cut to 2,000 chars, at most 40 messages, a UTF-8 byte budget), 5 ($defs/definitions kept, duplicate tool names offered once), 7 (90 s turn deadline), 8 (a send while another call runs says "Not sent" and is kept out of history; Send is disabled while the lab is busy), 9 (the model-down test now asserts no tool run), 10 (one agent config). Not fixed, below.
 
 ## Follow-ups (done 2026-11-22, second change)
 - Stories in Real: `runSpec` (useLab.js) discovers the door first and sends the tool's listed arguments; a tool the gateway does not list (a story about a refusal) keeps the catalog sample, and the gateway decides. Mock is unchanged. Test: `useLab.test.jsx`.
 - A `tools/list` reply over 256 KB: no change needed. The capture replaces it with a note, so the discovery is already an honest "Upstream error ... too large" (no empty forms), and the agent says so without a model call. A test now pins that.
-- Refusals in the chat (owner chose "call-by-name tool"): the agent gets one extra tool, `call_unlisted_tool(name, arguments)`, for when the user names a tool it was not offered. The lab sends that call to the gateway like the Tools tab's "run by name"; the gateway decides (on `demo-some-tools` it refuses), and the chat labels the step "a tool it did not list". The refused tool itself is never offered.
+- Refusals in the chat (owner chose "call-by-name tool"): the agent gets one extra tool, `call_unlisted_tool(name, arguments)`, for when the user names a tool it was not offered. The lab sends that call to the gateway like the Tools tab's "run by name"; the gateway decides (on `lab-banking-limited` it refuses), and the chat labels the step "a tool it did not list". The refused tool itself is never offered.

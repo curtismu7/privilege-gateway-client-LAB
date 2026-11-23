@@ -7,7 +7,7 @@ import { decideModel, MODEL_ORIGIN } from '../src/netguard.js';
 import { TOOLS } from '../src/doors.js';
 
 // "The real gateway" is a loopback stub and "the model" is a stub fetch: nothing here touches a network.
-const ALL = 'demo-all-tools';
+const ALL = 'lab-banking-full';
 const API_KEY = 'TESTONLY-anthropic-key-0004-abcdef';
 const AGENT_ENV = { PGC_ANTHROPIC_API_KEY: API_KEY };
 // The listed schema for get_access_grants, with an example value the Mock sample does not use, so a form built from it is told apart.
@@ -159,7 +159,7 @@ test('Mock: the agent route refuses, and no model call is attempted', async () =
 test('Blocked door: discovery is refused, so the agent says it has no tools and the model is never called', async () => {
   const model = await start();
   try {
-    const { body: r } = await ask('list my tools', 'demo-blocked');
+    const { body: r } = await ask('list my tools', 'lab-banking-blocked');
     assert.equal(r.stopped, 'discovery-refused');
     assert.equal(r.by, 'lab');
     assert.match(r.reply, /did not list any/);
@@ -169,10 +169,10 @@ test('Blocked door: discovery is refused, so the agent says it has no tools and 
 });
 
 test('A refused call goes back to the model as an error, and the step carries the refusal verdict', async () => {
-  // demo-some-tools does not list sensitive_holdings; the model asks for it anyway, and the gateway decides.
+  // lab-banking-limited does not list sensitive_holdings; the model asks for it anyway, and the gateway decides.
   const model = await start({ replies: [msg([toolUse('sensitive_holdings', { account_id: 'inv_1' })], 'tool_use'), msg([text('The gateway refused that.')])] });
   try {
-    const { body: r } = await ask('show sensitive holdings', 'demo-some-tools');
+    const { body: r } = await ask('show sensitive holdings', 'lab-banking-limited');
     const call = r.steps.find((s) => s.kind === 'call');
     assert.equal(call.run.verdict.id, 'blocked');
     const result = model.seen[1].body.messages.at(-1).content[0];
@@ -237,7 +237,7 @@ test('A schema with $defs keeps them for the model, and a duplicate tool name is
 test('call_unlisted_tool: the agent can ask for a tool the gateway did not list, and the gateway refuses it', async () => {
   const model = await start({ replies: [msg([toolUse('call_unlisted_tool', { name: 'sensitive_holdings', arguments: { account_id: 'inv_5520' } })], 'tool_use'), msg([text('The gateway refused sensitive_holdings.')])] });
   try {
-    const { body: r } = await ask('call sensitive_holdings for inv_5520', 'demo-some-tools');
+    const { body: r } = await ask('call sensitive_holdings for inv_5520', 'lab-banking-limited');
     assert.ok(model.seen[0].body.tools.some((t) => t.name === 'call_unlisted_tool'), 'the lab offers its one extra tool');
     assert.ok(!model.seen[0].body.tools.some((t) => t.name === 'sensitive_holdings'), 'the refused tool itself is not offered');
     const call = r.steps.find((st) => st.kind === 'call');

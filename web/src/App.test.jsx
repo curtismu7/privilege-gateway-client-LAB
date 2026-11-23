@@ -8,7 +8,7 @@ import { historyFor, HISTORY_BYTES, HISTORY_MESSAGES, MESSAGE_CHARS, plainReply,
 import { createLab } from "../../server/src/lab.js";
 import hopCatalog from "../../server/src/vendor/hop-catalog.json";
 
-const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "lab-banking-full", PGC_GW_KEY_LAB_BANKING_FULL: "test-only-key" };
 let t;
 const mount = async (opts) => {
   t = createTestApi(opts);
@@ -48,16 +48,16 @@ describe("shell and layout", () => {
     expect(tid("gateway-identity-name")).toHaveTextContent("aidemo");
     expect(tid("gateway-identity")).toHaveTextContent("Identity the gateway evaluated");
     const radios = within(tid("door-picker")).getAllByRole("radio");
-    expect(radios.map((r) => r.textContent.match(/demo-[a-z-]+/)[0])).toEqual(["demo-all-tools", "demo-some-tools", "demo-blocked"]);
+    expect(radios.map((r) => r.textContent.match(/lab-banking-[a-z-]+/)[0])).toEqual(["lab-banking-full", "lab-banking-limited", "lab-banking-blocked"]);
     expect(radios.filter((r) => r.tabIndex === 0)).toHaveLength(1);
-    expect(radios.every((r) => /\w{4}/.test(r.textContent.replace(/demo-[a-z-]+/, "")))).toBe(true); // each has a one-line description
+    expect(radios.every((r) => /\w{4}/.test(r.textContent.replace(/lab-banking-[a-z-]+/, "")))).toBe(true); // each has a one-line description
     radios[0].focus();
     fireEvent.keyDown(radios[0], { key: "ArrowDown" });
-    expect(tid("door-demo-some-tools")).toHaveAttribute("aria-checked", "true");
-    fireEvent.keyDown(tid("door-demo-some-tools"), { key: "End" });
-    expect(tid("door-demo-blocked")).toHaveAttribute("aria-checked", "true");
-    fireEvent.keyDown(tid("door-demo-blocked"), { key: "ArrowRight" });
-    expect(tid("door-demo-all-tools")).toHaveAttribute("aria-checked", "true");
+    expect(tid("door-lab-banking-limited")).toHaveAttribute("aria-checked", "true");
+    fireEvent.keyDown(tid("door-lab-banking-limited"), { key: "End" });
+    expect(tid("door-lab-banking-blocked")).toHaveAttribute("aria-checked", "true");
+    fireEvent.keyDown(tid("door-lab-banking-blocked"), { key: "ArrowRight" });
+    expect(tid("door-lab-banking-full")).toHaveAttribute("aria-checked", "true");
   });
 
   test("the Advanced drawer holds the Mock-only scenario control and the door URL on a .invalid host", async () => {
@@ -65,7 +65,7 @@ describe("shell and layout", () => {
     expect(tid("advanced").tagName).toBe("DETAILS");
     const options = [...tid("scenario-select").querySelectorAll("option")].map((o) => o.value);
     expect(options).toEqual(["none", "no-key", "bad-key", "upstream-error", "identity-mismatch"]);
-    expect(tid("door-url")).toHaveTextContent("https://mock-gateway.invalid/demo-all-tools/mcp");
+    expect(tid("door-url")).toHaveTextContent("https://mock-gateway.invalid/lab-banking-full/mcp");
   });
 
   test("a boot failure is named on the page, with a way to try again", async () => {
@@ -78,10 +78,10 @@ describe("shell and layout", () => {
 });
 
 describe("verdicts", () => {
-  test("demo-all-tools: Allowed, 18 of 18 tools listed, the verdict names word, sentence, facts and basis", async () => {
+  test("lab-banking-full: Allowed, 18 of 18 tools listed, the verdict names word, sentence, facts and basis", async () => {
     await mount();
     await discover();
-    expect(tid("verdict-sentence")).toHaveTextContent(/listed 18 tools on demo-all-tools/);
+    expect(tid("verdict-sentence")).toHaveTextContent(/listed 18 tools on lab-banking-full/);
     expect(tid("verdict-facts")).toHaveTextContent("Identity the gateway evaluated");
     expect(tid("verdict-facts")).toHaveTextContent("Checked by this lab's simulated gateway");
     expect(tid("verdict-card")).toHaveAttribute("data-tone", "ok");
@@ -89,9 +89,9 @@ describe("verdicts", () => {
     expect(document.querySelectorAll("[data-refused]")).toHaveLength(0);
   });
 
-  test("demo-some-tools: only the 7 granted tools are listed, as on the real gateway; the filter narrows the list", async () => {
+  test("lab-banking-limited: only the 7 granted tools are listed, as on the real gateway; the filter narrows the list", async () => {
     await mount();
-    door("demo-some-tools");
+    door("lab-banking-limited");
     await discover();
     expect(tid("tool-count")).toHaveTextContent("7 of 7 tools listed");
     expect(document.querySelectorAll("[data-refused]")).toHaveLength(0);
@@ -106,7 +106,7 @@ describe("verdicts", () => {
 
   test("a tool the list left out, run by name, is Blocked by policy in amber with the word, and the door's list stays", async () => {
     await mount();
-    door("demo-some-tools");
+    door("lab-banking-limited");
     await discover();
     expect(tid("by-name-run")).toBeDisabled();
     fireEvent.change(tid("by-name-input"), { target: { value: "sensitive_tax_record" } });
@@ -118,9 +118,9 @@ describe("verdicts", () => {
     expect(tid("tool-count")).toHaveTextContent("7 of 7 tools");
   });
 
-  test("demo-blocked: Blocked by policy before any tool is listed, and the empty state says so", async () => {
+  test("lab-banking-blocked: Blocked by policy before any tool is listed, and the empty state says so", async () => {
     await mount();
-    door("demo-blocked");
+    door("lab-banking-blocked");
     click("action-discover");
     await waitWord("Blocked by policy");
     expect(tid("tools-empty")).toHaveTextContent("No tools: blocked by policy");
@@ -139,7 +139,7 @@ describe("verdicts", () => {
     expect(screen.getAllByTestId("decoded-token").length).toBeGreaterThan(0);
   });
 
-  test("open_ticket on demo-all-tools is Held, simulated and amber", async () => {
+  test("open_ticket on lab-banking-full is Held, simulated and amber", async () => {
     await mount();
     await discover();
     click("tool-open_ticket");
@@ -268,7 +268,7 @@ describe("tools tab states", () => {
 describe("agent chat", () => {
   test("a clearly labelled SIMULATED agent that reads the message and never gives one canned answer", async () => {
     await mount();
-    door("demo-some-tools");
+    door("lab-banking-limited");
     click("tab-chat");
     expect(tid("chat-sim-note")).toHaveTextContent(/^SIMULATED agent/);
     const say = async (text) => {
@@ -279,7 +279,7 @@ describe("agent chat", () => {
       return replies[replies.length - 1].textContent;
     };
     const list = await say("list my tools");
-    expect(list).toMatch(/lists 7 tools on demo-some-tools/);
+    expect(list).toMatch(/lists 7 tools on lab-banking-limited/);
     expect(list).toMatch(/not listed is refused when called/);
     const balance = await say("get investment balance");
     expect(balance).toMatch(/get_investment_balance/);
@@ -298,7 +298,7 @@ describe("agent chat", () => {
 
   test("on a blocked door the agent says it was blocked", async () => {
     await mount();
-    door("demo-blocked");
+    door("lab-banking-blocked");
     click("tab-chat");
     fireEvent.change(tid("chat-input"), { target: { value: "list my tools" } });
     click("chat-send");
@@ -363,9 +363,9 @@ describe("Real mode", () => {
 // Real runs with real shapes: a Mock lab core makes them, and they are relabelled the way a Real lab returns them.
 async function realShapedRuns() {
   const m = createLab({ env: { MODE: "mock" }, version: "9.9.9", catalog: hopCatalog });
-  const disc = await m.discover({ door: "demo-all-tools" }, {});
-  const call = await m.call({ door: "demo-all-tools", tool: "who_has_role", args: { role: "prod-db-admin" } }, {});
-  const blocked = await m.call({ door: "demo-some-tools", tool: "sensitive_holdings", args: { account_id: "x" } }, {});
+  const disc = await m.discover({ door: "lab-banking-full" }, {});
+  const call = await m.call({ door: "lab-banking-full", tool: "who_has_role", args: { role: "prod-db-admin" } }, {});
+  const blocked = await m.call({ door: "lab-banking-limited", tool: "sensitive_holdings", args: { account_id: "x" } }, {});
   return { disc, call, blocked };
 }
 const AGENT_ENV = { ...REAL_ENV, PGC_ANTHROPIC_API_KEY: "test-only-model-key" };
@@ -386,7 +386,7 @@ describe("Real agent chat", () => {
     click("chat-send");
     await screen.findByText(/Two people hold prod-db-admin/);
     expect(sent).toHaveLength(1);
-    expect(sent[0]).toEqual({ door: "demo-all-tools", messages: [{ role: "user", text: "who holds prod-db-admin?" }] });
+    expect(sent[0]).toEqual({ door: "lab-banking-full", messages: [{ role: "user", text: "who holds prod-db-admin?" }] });
     const chips = screen.getAllByTestId("chat-step-chip");
     expect(chips.map((c) => c.textContent)).toEqual([disc.verdict.word, call.verdict.word, blocked.verdict.word]);
     expect(chips[2]).toHaveAttribute("data-verdict", "blocked");

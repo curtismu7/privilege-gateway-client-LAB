@@ -1,7 +1,7 @@
 {
   "id": "S06",
   "title": "Page login is not the identity the gateway evaluated",
-  "door": "demo-all-tools",
+  "door": "lab-banking-full",
   "mockOnly": true,
   "persona": "demouser",
   "goal": "A person signs in to this page as demouser, while the door's agent key acts as aidemo. {{castBrand}} wants to know which of the two the gateway decides on.",
@@ -10,7 +10,7 @@
   "say": "Two names, one decision, and it belongs to the key's identity. This mismatch is a Mock-only scenario.",
   "run": {
     "action": "call",
-    "door": "demo-all-tools",
+    "door": "lab-banking-full",
     "tool": "list_entitlements",
     "scenario": "identity-mismatch"
   },
@@ -27,7 +27,7 @@
       "why": "A page login proves who is at the screen. The agent key decides who the gateway evaluates.",
       "run": {
         "action": "call",
-        "door": "demo-all-tools",
+        "door": "lab-banking-full",
         "tool": "list_entitlements",
         "scenario": "identity-mismatch"
       },

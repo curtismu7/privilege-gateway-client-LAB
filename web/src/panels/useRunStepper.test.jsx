@@ -7,7 +7,7 @@ import { planRun, counterText, useRunStepper } from "./useRunStepper.js";
 
 const { api, lab } = createTestApi();
 const args = (name) => lab.info().catalog.find((t) => t.name === name).args;
-const call = (tool, extra = {}, door = "demo-all-tools") => api("/api/call", { method: "POST", body: { door, tool, arguments: args(tool), ...extra } });
+const call = (tool, extra = {}, door = "lab-banking-full") => api("/api/call", { method: "POST", body: { door, tool, arguments: args(tool), ...extra } });
 
 describe("planRun: where Simulate stops", () => {
   test("an allowed run plays through to the reply", async () => {
@@ -19,14 +19,14 @@ describe("planRun: where Simulate stops", () => {
     expect(p.ns).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
   test("a refused run stops at the Privilege decision, not at the reply", async () => {
-    const r = await call("open_ticket", {}, "demo-some-tools");
+    const r = await call("open_ticket", {}, "lab-banking-limited");
     const p = planRun(r.hops, r.verdict.id);
     expect(r.verdict.id).toBe("blocked");
     expect(p.stopHop).toMatchObject({ kind: "policy-check", verdict: "deny" });
     expect(p.stopsEarly).toBe(true);
   });
   test("a blocked door stops at its Privilege decision", async () => {
-    const r = await api("/api/discover", { method: "POST", body: { door: "demo-blocked" } });
+    const r = await api("/api/discover", { method: "POST", body: { door: "lab-banking-blocked" } });
     expect(planRun(r.hops, r.verdict.id).stopHop).toMatchObject({ kind: "policy-check" });
   });
   test("an upstream error stops at the tool hop", async () => {
@@ -80,7 +80,7 @@ describe("useRunStepper", () => {
   });
 
   test("Simulate plays on the timer and stops at the refusal; Next goes on; Simulate again restarts", async () => {
-    const r = await call("open_ticket", {}, "demo-some-tools");
+    const r = await call("open_ticket", {}, "lab-banking-limited");
     const { result } = renderHook(() => useRunStepper(r.hops, r.verdict.id));
     const stopAt = planRun(r.hops, r.verdict.id).stop;
     act(() => result.current.toggle());

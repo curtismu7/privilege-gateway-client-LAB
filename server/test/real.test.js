@@ -6,7 +6,7 @@ import { assertTrace } from '../src/gatewayTrace.js';
 import { mockPost } from './helpers.js';
 
 // "The real gateway" in these tests is a loopback stub that accepts the TESTONLY keys. Nothing here touches a network.
-const ALL = 'demo-all-tools';
+const ALL = 'lab-banking-full';
 let stub; let lab;
 const start = async (stubOpts = {}, envExtra = {}, keyOverride = {}) => {
   stub = await startStubGateway({ keys: { ...TEST_KEYS, ...keyOverride }, ...stubOpts });
@@ -47,7 +47,7 @@ test('Real discovery: Allowed on what the gateway answered (observed), with no p
 test('Real traces say only observed or inferred, pass assertTrace, and never hold a full token', async () => {
   await start();
   try {
-    for (const [path, body] of [['/api/discover', { door: ALL }], ['/api/discover', { door: 'demo-blocked' }], ['/api/call', { door: ALL, tool: 'who_has_role', arguments: { role: 'x' } }], ['/api/call', { door: 'demo-some-tools', tool: 'sensitive_holdings', arguments: { account_id: 'x' } }]]) {
+    for (const [path, body] of [['/api/discover', { door: ALL }], ['/api/discover', { door: 'lab-banking-blocked' }], ['/api/call', { door: ALL, tool: 'who_has_role', arguments: { role: 'x' } }], ['/api/call', { door: 'lab-banking-limited', tool: 'sensitive_holdings', arguments: { account_id: 'x' } }]]) {
       const { body: r } = await run(path, body);
       assert.equal(r.trace.source, 'real');
       assert.deepEqual(assertTrace(r.trace), [], `${path} ${JSON.stringify(body)}`);
@@ -62,16 +62,16 @@ test('Real traces say only observed or inferred, pass assertTrace, and never hol
 test('Real verdicts: 403 at the door and 403 on a tool are Blocked by policy, said as inferred; a good call is Allowed', async () => {
   await start();
   try {
-    const blocked = (await run('/api/discover', { door: 'demo-blocked' })).body;
+    const blocked = (await run('/api/discover', { door: 'lab-banking-blocked' })).body;
     assert.equal(blocked.verdict.id, 'blocked');
     assert.equal(blocked.verdict.status, 403);
     assert.equal(blocked.verdict.basis, 'inferred');
     assert.match(blocked.verdict.sentence, /answered 403 \(observed\).*inferred from that status/);
     assert.doesNotMatch(blocked.verdict.sentence, /no policy|simulated|checked/i, 'Real never asserts why the gateway refused');
-    const tool = (await run('/api/call', { door: 'demo-some-tools', tool: 'sensitive_tax_record', arguments: { taxpayer_id: 'x' } })).body;
+    const tool = (await run('/api/call', { door: 'lab-banking-limited', tool: 'sensitive_tax_record', arguments: { taxpayer_id: 'x' } })).body;
     assert.equal(tool.verdict.id, 'blocked');
     assert.ok(tool.hops.some((h) => h.kind === 'tool-refused' && h.basis === 'inferred'));
-    const ok = (await run('/api/call', { door: 'demo-some-tools', tool: 'who_has_role', arguments: { role: 'x' } })).body;
+    const ok = (await run('/api/call', { door: 'lab-banking-limited', tool: 'who_has_role', arguments: { role: 'x' } })).body;
     assert.equal(ok.verdict.id, 'allowed');
     assert.match(ok.verdict.sentence, /inferred from that answer/);
     assert.ok(ok.hops.some((h) => h.kind === 'tool-dispatched' && h.basis === 'inferred'));
@@ -199,17 +199,17 @@ test('Real: a long tool result (over the shared client\'s 800 characters) is sho
 test('Real: a door with no key is a 409 that names the setting; scenarios are refused; an unlisted door is 404', async () => {
   stub = await startStubGateway({ keys: TEST_KEYS });
   const env = realEnv(stub.origin);
-  delete env.PGC_GW_KEY_DEMO_BLOCKED;
+  delete env.PGC_GW_KEY_LAB_BANKING_BLOCKED;
   lab = await startLab({ env });
   try {
     const info = await (await fetch(`${lab.base}/api/info`)).json();
-    assert.deepEqual(info.doors.map((d) => [d.id, d.keyed]), [[ALL, true], ['demo-some-tools', true], ['demo-blocked', false]]);
-    const r = await postJson(lab.base, '/api/discover', { door: 'demo-blocked' });
+    assert.deepEqual(info.doors.map((d) => [d.id, d.keyed]), [[ALL, true], ['lab-banking-limited', true], ['lab-banking-blocked', false]]);
+    const r = await postJson(lab.base, '/api/discover', { door: 'lab-banking-blocked' });
     assert.equal(r.status, 409, 'another door\'s key must never be sent to this door');
     const b = await r.json();
     assert.equal(b.error, 'no_key_for_door');
-    assert.match(b.message, /PGC_GW_KEY_DEMO_BLOCKED/);
-    assert.ok(!stub.seen.some((s) => s.url.includes('demo-blocked')), 'nothing was sent to the keyless door');
+    assert.match(b.message, /PGC_GW_KEY_LAB_BANKING_BLOCKED/);
+    assert.ok(!stub.seen.some((s) => s.url.includes('lab-banking-blocked')), 'nothing was sent to the keyless door');
     const sc = await postJson(lab.base, '/api/discover', { door: ALL, scenario: 'no-key' });
     assert.equal(sc.status, 400);
     assert.equal((await sc.json()).error, 'mock_only');
@@ -251,7 +251,7 @@ test('a Real key never appears in any response, trace, hop, log line or error, e
   try {
     await start({ echoKey: true });
     const grab = async (path, body) => { const r = body === undefined ? await fetch(`${lab.base}${path}`) : await postJson(lab.base, path, body); const t = await r.text(); captured.push(t); return t; };
-    for (const door of ['demo-all-tools', 'demo-some-tools', 'demo-blocked']) {
+    for (const door of ['lab-banking-full', 'lab-banking-limited', 'lab-banking-blocked']) {
       await grab('/api/discover', { door });
       for (const tool of ['who_has_role', 'sensitive_holdings', 'open_ticket']) await grab('/api/call', { door, tool, arguments: { role: 'x', account_id: 'x', title: 'x' } });
     }
@@ -278,8 +278,8 @@ test('hostile gateway replies stay data: HTML, a huge body, invalid JSON and a r
     const mode = req.url.split('/')[1];
     const chunks = []; req.on('data', (c) => chunks.push(c));
     req.on('end', () => {
-      if (mode === 'demo-all-tools') { res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<html><script>alert(1)</script>not json</html>'); }
-      if (mode === 'demo-some-tools') { res.writeHead(302, { location: 'https://evil.example/steal' }); return res.end(); }
+      if (mode === 'lab-banking-full') { res.writeHead(200, { 'content-type': 'text/html' }); return res.end('<html><script>alert(1)</script>not json</html>'); }
+      if (mode === 'lab-banking-limited') { res.writeHead(302, { location: 'https://evil.example/steal' }); return res.end(); }
       res.writeHead(200, { 'content-type': 'application/json' }); res.end(`{"jsonrpc":"2.0","id":1,"result":{"padding":"${'x'.repeat(5 * 1024 * 1024)}"}}`);
     });
   });
@@ -288,7 +288,7 @@ test('hostile gateway replies stay data: HTML, a huge body, invalid JSON and a r
   const realFetch = globalThis.fetch; const urls = [];
   globalThis.fetch = (u, ...a) => { urls.push(String(u)); return realFetch(u, ...a); };
   try {
-    for (const door of ['demo-all-tools', 'demo-some-tools', 'demo-blocked']) {
+    for (const door of ['lab-banking-full', 'lab-banking-limited', 'lab-banking-blocked']) {
       const res = await postJson(lab.base, '/api/discover', { door });
       assert.equal(res.status, 200, door);
       assert.match(res.headers.get('content-type'), /json/);
@@ -310,7 +310,7 @@ for (const [name, callReply] of DENY_SHAPES) {
   test(`Real: ${name} on a call is Upstream error that reads no gateway decision, and no hop claims one`, async () => {
     await start({ callReply });
     try {
-      const r = (await run('/api/call', { door: 'demo-some-tools', tool: 'who_has_role', arguments: { role: 'x' } })).body;
+      const r = (await run('/api/call', { door: 'lab-banking-limited', tool: 'who_has_role', arguments: { role: 'x' } })).body;
       assert.equal(r.source, 'real');
       assert.equal(r.verdict.id, 'upstream');
       assert.equal(r.verdict.basis, 'inferred', 'nothing was reported by the gateway, so the reading is not observed');
@@ -331,10 +331,10 @@ for (const [name, callReply] of DENY_SHAPES) {
 test('Real: an isError result on a call still shows the tool text as detail, and a good call after it is Allowed again', async () => {
   await start({ callReply: { status: 200, json: { result: { isError: true, content: [{ type: 'text', text: 'boom' }] } } } });
   try {
-    const bad = (await run('/api/call', { door: 'demo-some-tools', tool: 'who_has_role', arguments: { role: 'x' } })).body;
+    const bad = (await run('/api/call', { door: 'lab-banking-limited', tool: 'who_has_role', arguments: { role: 'x' } })).body;
     assert.equal(bad.verdict.detail, 'boom');
     assert.equal(bad.result, null);
-    const disc = (await run('/api/discover', { door: 'demo-some-tools' })).body;
+    const disc = (await run('/api/discover', { door: 'lab-banking-limited' })).body;
     assert.equal(disc.verdict.id, 'allowed');
   } finally { await stop(); }
 });
@@ -342,7 +342,7 @@ test('Real: an isError result on a call still shows the tool text as detail, and
 test('Real never reports a held call: a body that looks like the Mock hold is just an answer (Allowed, inferred), not a Held verdict', async () => {
   await start({ callReply: { status: 200, json: { result: { isError: false, content: [{ type: 'text', text: '{}' }], _meta: { held: true } } } } });
   try {
-    const r = (await run('/api/call', { door: 'demo-some-tools', tool: 'who_has_role', arguments: { role: 'x' } })).body;
+    const r = (await run('/api/call', { door: 'lab-banking-limited', tool: 'who_has_role', arguments: { role: 'x' } })).body;
     assert.equal(r.verdict.id, 'allowed');
     assert.equal(r.verdict.basis, 'inferred');
     assert.ok(!r.hops.some((h) => h.kind === 'tool-held'));

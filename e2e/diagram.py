@@ -198,7 +198,7 @@ def desktop(browser, theme):
     page.wait_for_timeout(200)
 
     # A real allowed run, then the panel.
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_diagram(page)
     panel = rect(page, '[data-testid="panel-diagram"]')
     dock = rect(page, '[data-testid="panel-dock"]')
@@ -335,7 +335,7 @@ def desktop(browser, theme):
     # A refusal is amber with a lock and words, never red (also inside the panel); a refused run stops at the policy decision.
     ctx.close()
     ctx, page = new_page(browser, 1440, 900, theme)
-    run_tool(page, "demo-some-tools", "sensitive_tax_record")
+    run_tool(page, "lab-banking-limited", "sensitive_tax_record")
     open_diagram(page)
     no_cover(page, T, "blocked")
     check(T + "blocked: the Blocked by policy box is this run's outcome", text(page, '[data-testid="dg-node-verdict-blocked"] [data-testid="dg-outcome-tag"]') == "This run")
@@ -358,7 +358,7 @@ def desktop(browser, theme):
     check(T + "blocked: no overlaps", r["overlaps"] == [] and r["duplicates"] == [] and r["nodeHits"] == [], str(r))
 
     # Other outcomes: held, upstream error.
-    for door, tool, scen, args, outcome, what in (("demo-all-tools", "open_ticket", None, None, "held", "held"), ("demo-all-tools", "list_entitlements", "upstream-error", None, "upstream", "upstream")):
+    for door, tool, scen, args, outcome, what in (("lab-banking-full", "open_ticket", None, None, "held", "held"), ("lab-banking-full", "list_entitlements", "upstream-error", None, "upstream", "upstream")):
         ctx.close()
         ctx, page = new_page(browser, 1440, 900, theme)
         run_tool(page, door, tool, args, scen)
@@ -388,7 +388,7 @@ def desktop(browser, theme):
 def phone(browser, theme):
     ctx, page = new_page(browser, 375, 812, theme)
     T = f"[{theme} 375] "
-    run_tool(page, "demo-some-tools", "sensitive_patient_records", args_text='{"patient_id": "pat_4410"}')
+    run_tool(page, "lab-banking-limited", "sensitive_patient_records", args_text='{"patient_id": "pat_4410"}')
     page.click('[data-testid="dock-diagram"]')
     page.wait_for_selector('[data-testid="dg-canvas"] .react-flow__node')
     page.wait_for_selector('[data-testid^="dk-label-"]')
@@ -431,7 +431,7 @@ def once_only(browser):
     # Escape closes; a resize is remembered across a reload (the shared dialog's own storage); the panel is draggable by its title.
     ctx, page = new_page(browser, 1440, 900, "light")
     T = "[panel] "
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_diagram(page)
     tb = rect(page, '[data-testid="panel-diagram"] [data-testid="fd-titlebar"]')
     p0 = rect(page, '[data-testid="panel-diagram"]')
@@ -458,7 +458,7 @@ def once_only(browser):
     check(T + "Escape returns focus to the dock button", page.evaluate("document.activeElement?.dataset?.testid") == "dock-diagram", str(page.evaluate("document.activeElement?.dataset?.testid")))
     page.reload()
     page.wait_for_selector('[data-testid="get-tools"]')
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_diagram(page)
     p3 = rect(page, '[data-testid="panel-diagram"]')
     check(T + "a reload restores the remembered size and place", abs(p3["w"] - p2["w"]) < 3 and abs(p3["x"] - p2["x"]) < 3 and abs(p3["y"] - p2["y"]) < 3, f"{p2} -> {p3}")
@@ -478,7 +478,7 @@ def once_only(browser):
             route.fulfill(response=resp, body=json.dumps(body))
         page.route("**/api/call", fix)
     ctx, page = new_page(browser, 1440, 900, "light", init=hostile)
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_diagram(page)
     page.click('[data-testid="panel-diagram"] [data-testid="step-next"]')
     page.wait_for_timeout(300)
@@ -489,7 +489,7 @@ def once_only(browser):
 
     # Pop-out: a real second window. Reported honestly: it either works (separate React root, own stylesheets, kit labels, Next) or is disabled.
     ctx, page = new_page(browser, 1440, 900, "light")
-    run_tool(page, "demo-all-tools", "list_entitlements")
+    run_tool(page, "lab-banking-full", "list_entitlements")
     open_diagram(page)
     # Pop-out is NOT supported for this panel (React Flow cannot measure boxes in another window: they stay hidden and no arrow is drawn). The button must be absent
     # and the panel must say so; the other panels keep theirs.

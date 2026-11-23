@@ -14,8 +14,8 @@ describe("useLab", () => {
   test("loads /api/info and the session, and picks the first door", async () => {
     const { lab, calls } = await boot();
     expect(lab().info.source).toBe("mock");
-    expect(lab().door).toBe("demo-all-tools");
-    expect(lab().info.doors.map((d) => d.id)).toEqual(["demo-all-tools", "demo-some-tools", "demo-blocked"]);
+    expect(lab().door).toBe("lab-banking-full");
+    expect(lab().info.doors.map((d) => d.id)).toEqual(["lab-banking-full", "lab-banking-limited", "lab-banking-blocked"]);
     expect(calls.map((c) => c.path)).toEqual(expect.arrayContaining(["/api/info", "/api/session", "/api/auth/config"]));
   });
 
@@ -30,9 +30,9 @@ describe("useLab", () => {
     expect(r.result.current.boot).toBe("ready");
   });
 
-  test("discover on demo-some-tools lists only the 7 granted tools; a refused call by name does not drop the list", async () => {
+  test("discover on lab-banking-limited lists only the 7 granted tools; a refused call by name does not drop the list", async () => {
     const { lab } = await boot();
-    act(() => lab().chooseDoor("demo-some-tools"));
+    act(() => lab().chooseDoor("lab-banking-limited"));
     await act(async () => { await lab().discover(); });
     expect(lab().hasTools).toBe(true);
     expect(lab().discovery.tools).toHaveLength(7);
@@ -42,9 +42,9 @@ describe("useLab", () => {
     expect(lab().discovery.verdict.id).toBe("allowed");
   });
 
-  test("demo-blocked: discovery is Blocked by policy and there is no tool list", async () => {
+  test("lab-banking-blocked: discovery is Blocked by policy and there is no tool list", async () => {
     const { lab } = await boot();
-    act(() => lab().chooseDoor("demo-blocked"));
+    act(() => lab().chooseDoor("lab-banking-blocked"));
     await act(async () => { await lab().discover(); });
     expect(lab().lastRun.verdict.word).toBe("Blocked by policy");
     expect(lab().hasTools).toBe(false);
@@ -55,7 +55,7 @@ describe("useLab", () => {
     await act(async () => { await lab().discover(); });
     act(() => lab().setSelectedTool("who_has_role"));
     expect(lab().lastRun).not.toBeNull();
-    act(() => lab().chooseDoor("demo-blocked"));
+    act(() => lab().chooseDoor("lab-banking-blocked"));
     expect(lab().lastRun).toBeNull();
     expect(lab().discovery).toBeNull();
     expect(lab().selectedTool).toBeNull();
@@ -68,12 +68,12 @@ describe("useLab", () => {
     let pending;
     act(() => { pending = lab().discover(); });
     await waitFor(() => expect(lab().busy).not.toBeNull());
-    act(() => lab().chooseDoor("demo-blocked"));
+    act(() => lab().chooseDoor("lab-banking-blocked"));
     expect(lab().busy).toBeNull();
     release();
     await act(async () => { await pending; });
     expect(lab().lastRun).toBeNull();
-    expect(lab().door).toBe("demo-blocked");
+    expect(lab().door).toBe("lab-banking-blocked");
   });
 
   test("a second action while one is running is ignored", async () => {
@@ -98,7 +98,7 @@ describe("useLab", () => {
     expect(calls.some((c) => c.path === "/api/call")).toBe(false);
     act(() => lab().setArgs("who_has_role", '{"role": "Treasury Approver"}'));
     await act(async () => { await lab().callTool("who_has_role"); });
-    expect(calls.find((c) => c.path === "/api/call").body).toEqual({ door: "demo-all-tools", tool: "who_has_role", arguments: { role: "Treasury Approver" } });
+    expect(calls.find((c) => c.path === "/api/call").body).toEqual({ door: "lab-banking-full", tool: "who_has_role", arguments: { role: "Treasury Approver" } });
     expect(lab().lastRun.verdict.id).toBe("allowed");
   });
 
@@ -131,13 +131,13 @@ describe("useLab", () => {
   });
 
   test("mode: both directions reload the data when Real is configured", async () => {
-    const stub = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+    const stub = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "lab-banking-full", PGC_GW_KEY_LAB_BANKING_FULL: "test-only-key" };
     const { lab, calls } = await boot({ env: stub });
     await act(async () => { await lab().discover(); });
     await act(async () => { await lab().setMode("real"); });
     expect(lab().info.source).toBe("real");
     expect(lab().lastRun).toBeNull();
-    expect(lab().info.doors.map((d) => d.id)).toEqual(["demo-all-tools"]);
+    expect(lab().info.doors.map((d) => d.id)).toEqual(["lab-banking-full"]);
     expect(lab().scenario).toBe("none");
     await act(async () => { await lab().setMode("mock"); });
     expect(lab().info.source).toBe("mock");
@@ -182,22 +182,22 @@ describe("useLab", () => {
     const { createLab } = await import("../../server/src/lab.js");
     const catalog = (await import("../../server/src/vendor/hop-catalog.json")).default;
     const m = createLab({ env: { MODE: "mock" }, version: "9.9.9", catalog });
-    const disc = await m.discover({ door: "demo-all-tools" }, {});
+    const disc = await m.discover({ door: "lab-banking-full" }, {});
     const realDisc = { ...disc, source: "real", simulated: false, tools: disc.tools.map((t) => (t.name === "get_access_grants" ? { ...t, args: { resource: "billing-db" } } : t)) };
     const sent = [];
-    const call = await m.call({ door: "demo-all-tools", tool: "get_access_grants", args: { resource: "billing-db" } }, {});
-    const env = { PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+    const call = await m.call({ door: "lab-banking-full", tool: "get_access_grants", args: { resource: "billing-db" } }, {});
+    const env = { PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "lab-banking-full", PGC_GW_KEY_LAB_BANKING_FULL: "test-only-key" };
     const real = await boot({ env, hooks: { "/api/discover": () => realDisc, "/api/call": (b) => { sent.push(b); return call; } } });
     expect(real.lab().info.source).toBe("real");
-    await act(async () => { await real.lab().runSpec({ door: "demo-all-tools", action: "call", tool: "get_access_grants" }); });
+    await act(async () => { await real.lab().runSpec({ door: "lab-banking-full", action: "call", tool: "get_access_grants" }); });
     expect(real.calls.map((c) => c.path).filter((p) => p === "/api/discover" || p === "/api/call")).toEqual(["/api/discover", "/api/call"]);
     expect(sent[0].arguments).toEqual({ resource: "billing-db" });
     // A tool the gateway did not list keeps the catalog sample.
-    await act(async () => { await real.lab().runSpec({ door: "demo-all-tools", action: "call", tool: "sensitive_tax_record" }); });
+    await act(async () => { await real.lab().runSpec({ door: "lab-banking-full", action: "call", tool: "sensitive_tax_record" }); });
     expect(sent[1].arguments).toEqual(real.lab().info.catalog.find((t) => t.name === "sensitive_tax_record").args);
 
     const mock = await boot();
-    await act(async () => { await mock.lab().runSpec({ door: "demo-all-tools", action: "call", tool: "get_access_grants" }); });
+    await act(async () => { await mock.lab().runSpec({ door: "lab-banking-full", action: "call", tool: "get_access_grants" }); });
     expect(mock.calls.filter((c) => c.path === "/api/discover")).toHaveLength(0);
     expect(mock.calls.find((c) => c.path === "/api/call").body.arguments).toEqual(mock.lab().info.catalog.find((t) => t.name === "get_access_grants").args);
   });

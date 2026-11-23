@@ -1,15 +1,15 @@
 {
   "id": "S01",
   "title": "The door that permits every tool",
-  "door": "demo-all-tools",
+  "door": "lab-banking-full",
   "mockOnly": false,
-  "goal": "{{castAgentId}} at {{castBrand}} is given the standing door demo-all-tools and needs to know what it can do through it.",
+  "goal": "{{castAgentId}} at {{castBrand}} is given the standing door lab-banking-full and needs to know what it can do through it.",
   "obstacle": "An agent cannot guess a policy. It has to connect, discover the tools and try one before it knows whether the door is useful.",
   "control": "The door's policy covers every tool, so discovery lists all 18. The verdict is Allowed, and the evidence shows who the gateway evaluated and why.",
   "say": "This is the widest door: 18 tools listed. Everything here is simulated by the lab's own gateway, and the verdict says so.",
   "run": {
     "action": "discover",
-    "door": "demo-all-tools"
+    "door": "lab-banking-full"
   },
   "expect": {
     "verdict": "allowed",
@@ -19,7 +19,7 @@
     {
       "n": 1,
       "title": "Pick the door",
-      "tell": "Choose demo-all-tools. The banner at the top says the gateway is simulated; the identity rail shows the identity the simulated gateway evaluates.",
+      "tell": "Choose lab-banking-full. The banner at the top says the gateway is simulated; the identity rail shows the identity the simulated gateway evaluates.",
       "say": "One door, one policy, one identity being evaluated.",
       "why": "A door is a standing endpoint. Which tools it offers is decided by the policy behind it, not by the client."
     },
@@ -31,7 +31,7 @@
       "why": "Discovery is the first call a client makes. It already carries a decision.",
       "run": {
         "action": "discover",
-        "door": "demo-all-tools"
+        "door": "lab-banking-full"
       },
       "expect": {
         "verdict": "allowed",
@@ -46,7 +46,7 @@
       "why": "A result without a label would look like real data. The label is part of the honesty rule.",
       "run": {
         "action": "call",
-        "door": "demo-all-tools",
+        "door": "lab-banking-full",
         "tool": "list_entitlements"
       },
       "expect": {

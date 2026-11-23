@@ -32,7 +32,7 @@ const labelOn = () => [...document.querySelectorAll(".dk-label--on")].map((l) =>
 
 describe("what the page draws from the data", () => {
   test("every box and every arrow label of diagrams/pgc-call-path.json is on the page, the labels in the kit's layer above the boxes", async () => {
-    render(<Host run={await realRun("demo-all-tools", "list_entitlements", U)} />);
+    render(<Host run={await realRun("lab-banking-full", "list_entitlements", U)} />);
     const d = callPathDiagram();
     for (const n of d.nodes) expect(node(n.id)).toHaveTextContent(n.label);
     const layer = document.querySelector(".react-flow__viewport-portal");
@@ -51,7 +51,7 @@ describe("what the page draws from the data", () => {
 
 describe("it follows the one walkthrough", () => {
   test("Next from a fresh page starts PAUSED at message 1 and lights the browser to lab arrow; the next message lights the next arrow", async () => {
-    render(<Host run={await realRun("demo-all-tools", "list_entitlements", U)} />);
+    render(<Host run={await realRun("lab-banking-full", "list_entitlements", U)} />);
     expect(labelOn()).toEqual([]);
     fireEvent.click(screen.getByTestId("step-next"));
     expect(screen.getByTestId("step-counter")).toHaveTextContent("Message 1 of 8");
@@ -68,7 +68,7 @@ describe("it follows the one walkthrough", () => {
     expect(labelOn()).toEqual(["1. pick a door, run a tool"]);
   });
   test("the hop that has no arrow of its own says so; the hop that ends the run lights the verdict arrow", async () => {
-    const run = await realRun("demo-all-tools", "list_entitlements", U);
+    const run = await realRun("lab-banking-full", "list_entitlements", U);
     render(<Host run={run} />);
     for (let i = 0; i < run.hops.length; i += 1) fireEvent.click(screen.getByTestId("step-next"));
     expect(screen.getByTestId("step-counter")).toHaveTextContent(`Message ${run.hops.length} of ${run.hops.length}`);
@@ -76,10 +76,10 @@ describe("it follows the one walkthrough", () => {
     expect(screen.getByTestId("dg-now")).toHaveTextContent("The verdict is shown first");
   });
   test.each([
-    ["allowed", ["demo-all-tools", "list_entitlements", U], "verdict-allowed", ["e3", "e4"], ["e6", "e7", "e5"]],
-    ["blocked", ["demo-blocked", "list_entitlements", U], "verdict-blocked", ["e6"], ["e3", "e4", "e5", "e7"]],
-    ["held", ["demo-all-tools", "open_ticket", { user: "carol.nguyen", resource: "prod-db-primary", action: "review", justification: "Quarterly access review" }], "verdict-held", ["e7"], ["e3", "e4", "e5", "e6"]],
-    ["upstream", ["demo-all-tools", "list_entitlements", U, "upstream-error"], "verdict-upstream", ["e3", "e5"], ["e4", "e6", "e7"]],
+    ["allowed", ["lab-banking-full", "list_entitlements", U], "verdict-allowed", ["e3", "e4"], ["e6", "e7", "e5"]],
+    ["blocked", ["lab-banking-blocked", "list_entitlements", U], "verdict-blocked", ["e6"], ["e3", "e4", "e5", "e7"]],
+    ["held", ["lab-banking-full", "open_ticket", { user: "carol.nguyen", resource: "prod-db-primary", action: "review", justification: "Quarterly access review" }], "verdict-held", ["e7"], ["e3", "e4", "e5", "e6"]],
+    ["upstream", ["lab-banking-full", "list_entitlements", U, "upstream-error"], "verdict-upstream", ["e3", "e5"], ["e4", "e6", "e7"]],
   ])("a %s run marks its own outcome box in words and dims the arrows it did not take", async (id, args, outcome, taken, notTaken) => {
     const run = await realRun(...args);
     expect(run.verdict.id).toBe(id);
@@ -92,13 +92,13 @@ describe("it follows the one walkthrough", () => {
     for (const e of notTaken) expect(dimmed(e), `${e} was not taken`).toBe(true);
   });
   test("a run refused at the door (no key) has no outcome box, and Simulate stops where the run did", async () => {
-    const run = await realRun("demo-all-tools", "list_entitlements", U, "no-key");
+    const run = await realRun("lab-banking-full", "list_entitlements", U, "no-key");
     render(<Host run={run} />);
     expect(run.verdict.id).toBe("needs-sign-in");
     expect(document.querySelector('[data-outcome="true"]')).toBeNull();
   });
   test("a refusal box carries a lock and its words, an upstream failure its own icon: never red", async () => {
-    render(<Host run={await realRun("demo-blocked", "list_entitlements", U)} />);
+    render(<Host run={await realRun("lab-banking-blocked", "list_entitlements", U)} />);
     expect(node("verdict-blocked").querySelector("svg")).not.toBeNull();
     expect(node("verdict-blocked")).toHaveTextContent("Blocked by policy");
     const css = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "app.css"), "utf8");
@@ -109,7 +109,7 @@ describe("it follows the one walkthrough", () => {
 
 describe("a box expands in place (the kit's passport)", () => {
   test("click shows group, reach and the arrows in and out; again, another box, and the empty canvas collapse or move it", async () => {
-    render(<Host run={await realRun("demo-all-tools", "list_entitlements", U)} />);
+    render(<Host run={await realRun("lab-banking-full", "list_entitlements", U)} />);
     expect(open()).toEqual([]);
     fireEvent.click(node("policy"));
     expect(open()).toEqual(["dg-node-policy"]);
@@ -124,7 +124,7 @@ describe("a box expands in place (the kit's passport)", () => {
     fireEvent.click(document.querySelector(".react-flow__pane")); expect(open()).toEqual([]);
   });
   test("Reset collapses the box and stops the walk", async () => {
-    render(<Host run={await realRun("demo-all-tools", "list_entitlements", U)} />);
+    render(<Host run={await realRun("lab-banking-full", "list_entitlements", U)} />);
     fireEvent.click(screen.getByTestId("step-next"));
     fireEvent.click(node("door"));
     expect(open()).toEqual(["dg-node-door"]);
@@ -144,7 +144,7 @@ describe("moved boxes and Reset", () => {
   const at = (id) => screen.getByTestId(`dg-node-${id}`).closest(".react-flow__node").style.transform;
   test("a moved box is drawn where it was moved, the note counts it, and Reset puts it back where the DATA places it", async () => {
     const d = callPathDiagram(); const door = d.nodes.find((n) => n.id === "door");
-    render(<Moved run={await realRun("demo-all-tools", "list_entitlements", U)} />);
+    render(<Moved run={await realRun("lab-banking-full", "list_entitlements", U)} />);
     expect(at("door")).toContain("translate(1234px, 56px)");
     expect(at("lab")).toContain("translate(250px, 120px)".replace("250", String(d.nodes.find((n) => n.id === "lab").x)).replace("120", String(d.nodes.find((n) => n.id === "lab").y)));
     expect(screen.getByTestId("dg-note")).toHaveTextContent("1 box moved");
@@ -167,7 +167,7 @@ describe("hostile text is inert", () => {
   test("a hostile box label, arrow label, step text and hop title render as text: no element, no handler", async () => {
     const d = JSON.parse(JSON.stringify(callPathDiagram()));
     d.nodes[0].label = evil; d.nodes[0].sub = [evil]; d.edges[0].label = evil; d.steps[0].title = evil; d.steps[0].what = evil;
-    const run = await realRun("demo-all-tools", "list_entitlements", U);
+    const run = await realRun("lab-banking-full", "list_entitlements", U);
     render(<Host run={run} diagram={d} />);
     fireEvent.click(screen.getByTestId("step-next"));
     fireEvent.click(node("browser")); // expanded: the sub lines and the passport too
@@ -178,7 +178,7 @@ describe("hostile text is inert", () => {
     expect(window.__pwned).toBeUndefined();
   });
   test("control and bidirectional characters in a hop title are shown as escapes", async () => {
-    const run = await realRun("demo-all-tools", "list_entitlements", U);
+    const run = await realRun("lab-banking-full", "list_entitlements", U);
     run.hops[0] = { ...run.hops[0], kind: "no-such-kind", title: "a‮b" };
     render(<Host run={run} />);
     fireEvent.click(screen.getByTestId("step-next"));
@@ -190,7 +190,7 @@ describe("hostile text is inert", () => {
 describe("the Diagram panel in the dock", () => {
   test("is the fifth panel, with its own icon, and opens as a FloatingDialog that follows the dock's walk", async () => {
     expect(PANELS.map((p) => p.id)).toEqual(["reel", "tokens", "sequence", "diagram", "trace"]);
-    const run = await realRun("demo-all-tools", "list_entitlements", U);
+    const run = await realRun("lab-banking-full", "list_entitlements", U);
     function Dock() { const stepper = useRunStepper(run.hops, run.verdict.id); return <PanelDock run={run} stepper={stepper} />; }
     render(<Dock />);
     fireEvent.click(screen.getByTestId("dock-diagram"));

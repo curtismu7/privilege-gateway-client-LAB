@@ -119,12 +119,12 @@ describe("mapping a run onto the diagram", () => {
   // The real lab core: every hop of every kind of run finds a step (an unmapped hop would show "no arrow of its own" for a hop that should have one).
   const U = { user: "aidemo" };
   const runs = [
-    ["allowed", { door: "demo-all-tools", tool: "list_entitlements", args: U }],
-    ["blocked", { door: "demo-blocked", tool: "list_entitlements", args: U }],
-    ["blocked", { door: "demo-some-tools", tool: "sensitive_patient_records", args: { patient_id: "pat_4410" } }],
-    ["held", { door: "demo-all-tools", tool: "open_ticket", args: { user: "carol.nguyen", resource: "prod-db-primary", action: "review", justification: "Quarterly access review" } }],
-    ["upstream", { door: "demo-all-tools", tool: "list_entitlements", args: U, scenario: "upstream-error" }],
-    ["needs-sign-in", { door: "demo-all-tools", tool: "list_entitlements", args: U, scenario: "no-key" }],
+    ["allowed", { door: "lab-banking-full", tool: "list_entitlements", args: U }],
+    ["blocked", { door: "lab-banking-blocked", tool: "list_entitlements", args: U }],
+    ["blocked", { door: "lab-banking-limited", tool: "sensitive_patient_records", args: { patient_id: "pat_4410" } }],
+    ["held", { door: "lab-banking-full", tool: "open_ticket", args: { user: "carol.nguyen", resource: "prod-db-primary", action: "review", justification: "Quarterly access review" } }],
+    ["upstream", { door: "lab-banking-full", tool: "list_entitlements", args: U, scenario: "upstream-error" }],
+    ["needs-sign-in", { door: "lab-banking-full", tool: "list_entitlements", args: U, scenario: "no-key" }],
   ];
   test.each(runs)("a %s run: every hop that ran has a step, the path leaves out what did not run", async (id, body) => {
     const t = createTestApi();

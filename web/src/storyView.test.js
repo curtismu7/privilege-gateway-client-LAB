@@ -4,8 +4,8 @@ import { signInState } from "./signinView.js";
 import { readWorkspace } from "./api.js";
 import { seedTalkPlace } from "./panels/talkPlace.js";
 
-const info = (source, ids = ["demo-all-tools", "demo-some-tools", "demo-blocked"]) => ({ source, doors: ids.map((id) => ({ id })) });
-const S = { id: "S04", title: "A write that waits", door: "demo-all-tools", mockOnly: true, run: { action: "call", door: "demo-all-tools", tool: "open_ticket" }, expect: { verdict: "held" } };
+const info = (source, ids = ["lab-banking-full", "lab-banking-limited", "lab-banking-blocked"]) => ({ source, doors: ids.map((id) => ({ id })) });
+const S = { id: "S04", title: "A write that waits", door: "lab-banking-full", mockOnly: true, run: { action: "call", door: "lab-banking-full", tool: "open_ticket" }, expect: { verdict: "held" } };
 
 describe("?story= parsing", () => {
   test("only S followed by two digits is a story id; everything else is null and flagged", () => {
@@ -24,8 +24,8 @@ describe("what can run", () => {
   test("a Mock-only story is blocked in Real with the reason; a missing door blocks; Mock runs everything", () => {
     expect(storyBlock(S, info("mock"))).toBeNull();
     expect(storyBlock(S, info("real"))).toMatch(/runs in Mock only/);
-    expect(storyBlock({ ...S, mockOnly: false }, info("real", ["some-other-door"]))).toMatch(/demo-all-tools.*not one of the doors.*Real/);
-    expect(storyBlock({ ...S, mockOnly: false }, info("real", ["demo-all-tools"]))).toBeNull();
+    expect(storyBlock({ ...S, mockOnly: false }, info("real", ["some-other-door"]))).toMatch(/lab-banking-full.*not one of the doors.*Real/);
+    expect(storyBlock({ ...S, mockOnly: false }, info("real", ["lab-banking-full"]))).toBeNull();
     expect(storyBlock(S, null)).toMatch(/not loaded/);
     expect(storyBlock(null, info("mock"))).toMatch(/not loaded/);
   });
@@ -36,13 +36,13 @@ describe("what can run", () => {
 });
 
 describe("the check line", () => {
-  const run = { action: "call", door: "demo-all-tools", tool: "open_ticket", scenario: "none", verdict: { id: "held", word: "Held" }, identity: {} };
+  const run = { action: "call", door: "lab-banking-full", tool: "open_ticket", scenario: "none", verdict: { id: "held", word: "Held" }, identity: {} };
   test("it exists only for the matching run, and says whether the verdict is the expected one", () => {
     expect(runMatches(run, S.run)).toBe(true);
     expect(runMatches({ ...run, tool: "other" }, S.run)).toBe(false);
     expect(runMatches({ ...run, scenario: "no-key" }, S.run)).toBe(false);
     expect(storyCheck(null, S.run, S.expect)).toBeNull();
-    expect(storyCheck({ ...run, door: "demo-blocked" }, S.run, S.expect)).toBeNull();
+    expect(storyCheck({ ...run, door: "lab-banking-blocked" }, S.run, S.expect)).toBeNull();
     expect(storyCheck(run, S.run, S.expect)).toMatchObject({ ok: true, word: "Held" });
     expect(storyCheck({ ...run, verdict: { id: "allowed", word: "Allowed" } }, S.run, S.expect)).toMatchObject({ ok: false, got: "allowed", want: "held" });
   });

@@ -1,15 +1,15 @@
 {
   "id": "S02",
   "title": "The door that permits some tools",
-  "door": "demo-some-tools",
+  "door": "lab-banking-limited",
   "mockOnly": false,
-  "goal": "{{castAgentId}} at {{castBrand}} is given demo-some-tools: a read-only grant for reading access and portfolio data, not for {{castSensitive}}.",
+  "goal": "{{castAgentId}} at {{castBrand}} is given lab-banking-limited: a read-only grant for reading access and portfolio data, not for {{castSensitive}}.",
   "obstacle": "The list shows only the tools this caller may run. A tool that is missing from the list is still a tool the backend has, so the caller can still ask for it by name.",
   "control": "The simulated gateway lists only the 7 tools the grant allows and leaves the other 11 out. Calling one of the 11 by name is refused with 403 before it reaches the backend. That refusal is the policy working, so the verdict is Blocked by policy and is never shown as a fault.",
   "say": "Seven tools are listed. The other eleven are not, and the gateway still refuses them if you ask by name. A refusal here is a result, not a failure.",
   "run": {
     "action": "call",
-    "door": "demo-some-tools",
+    "door": "lab-banking-limited",
     "tool": "sensitive_payroll_details"
   },
   "expect": {
@@ -19,12 +19,12 @@
     {
       "n": 1,
       "title": "Discover the tools",
-      "tell": "Pick demo-some-tools and run discovery. The verdict says the gateway listed 7 tools for the identity it evaluated. The other 11 are simply not in the list.",
+      "tell": "Pick lab-banking-limited and run discovery. The verdict says the gateway listed 7 tools for the identity it evaluated. The other 11 are simply not in the list.",
       "say": "Same client, same call, a different policy: seven tools instead of eighteen.",
       "why": "Observed on the real gateway: a key with a seven-tool grant is listed exactly those seven. The lab's simulation lists the same way.",
       "run": {
         "action": "discover",
-        "door": "demo-some-tools"
+        "door": "lab-banking-limited"
       },
       "expect": {
         "verdict": "allowed",
@@ -39,7 +39,7 @@
       "why": "The grant is a list of exact tools, not a category.",
       "run": {
         "action": "call",
-        "door": "demo-some-tools",
+        "door": "lab-banking-limited",
         "tool": "get_investment_balance"
       },
       "expect": {
@@ -54,7 +54,7 @@
       "why": "Enforcement sits in front of the tool, so a client that asks for a tool the list left out is still stopped.",
       "run": {
         "action": "call",
-        "door": "demo-some-tools",
+        "door": "lab-banking-limited",
         "tool": "sensitive_payroll_details"
       },
       "expect": {

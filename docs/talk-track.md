@@ -20,13 +20,13 @@ Never claimed in Real: that the gateway "checked" something. A client sees a sta
 
 ## S01: The door that permits every tool
 
-Pick demo-all-tools and discover. Eighteen tools come back, all of them in the grant of {{castAgentId}}. Run list_entitlements and the verdict is Allowed. Point at the result: it is labelled simulated sample data, not {{castBrand}}'s data.
+Pick lab-banking-full and discover. Eighteen tools come back, all of them in the grant of {{castAgentId}}. Run list_entitlements and the verdict is Allowed. Point at the result: it is labelled simulated sample data, not {{castBrand}}'s data.
 
 Then open the movie reel and step through the hops. This is the evidence view: the request, the response and, in Mock, whether the lab's own gateway checked it. Say that the widest door is not the interesting one; it is the baseline you compare the other two against.
 
 ## S02: The door that permits some tools
 
-Pick demo-some-tools and discover. Same client, same call, but now only seven tools come back. The other eleven are not listed, as on the real gateway, for example the tools that guard {{castSensitive}}. Say that a tool missing from the list is still refused if a client asks for it by name.
+Pick lab-banking-limited and discover. Same client, same call, but now only seven tools come back. The other eleven are not listed, as on the real gateway, for example the tools that guard {{castSensitive}}. Say that a tool missing from the list is still refused if a client asks for it by name.
 
 Run a listed tool: Allowed. Then type sensitive_payroll_details into Run a tool by name: Blocked by policy. The simulated gateway answered 403 before the backend was reached. Say plainly that the refusal is the control working, which is why it is not shown in red, and why the card tells you the next step instead of showing an error.
 
@@ -34,13 +34,13 @@ If you are asked whether a real gateway filters the tool list: on the gateway th
 
 ## S03: The door with no policy
 
-Pick demo-blocked and discover. Blocked by policy, and no tool list at all. A door with no policy is not an open door; with nothing that permits the caller, the gateway refuses before it lists anything. Try a tool anyway and get the same answer.
+Pick lab-banking-blocked and discover. Blocked by policy, and no tool list at all. A door with no policy is not an open door; with nothing that permits the caller, the gateway refuses before it lists anything. Try a tool anyway and get the same answer.
 
 If you are asked where a real gateway refuses a door with no policy (at initialize or at tools/list): that is unverified. The lab refuses at initialize and says it is simulated. Ask the audience to capture one from their own gateway if they can.
 
 ## S04: A write that waits for a person
 
-On demo-all-tools, run open_ticket, the tool that changes data. The verdict is Held: the simulated gateway is holding {{castTicket}} until {{castApprover}} approves it. Nothing ran.
+On lab-banking-full, run open_ticket, the tool that changes data. The verdict is Held: the simulated gateway is holding {{castTicket}} until {{castApprover}} approves it. Nothing ran.
 
 Be careful here. Held is Mock only. Nobody has captured a real held call yet, so the body you see is invented by this lab and labelled simulated, and Real never claims a hold. Use it to show the idea (a permitted write can still wait for a person), not as a description of how the product answers.
 
