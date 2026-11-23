@@ -66,7 +66,7 @@ describe("a failed run clears the previous one (every surface of the page)", () 
   const tid = (x) => screen.getByTestId(x);
   const click = (x) => fireEvent.click(typeof x === "string" ? tid(x) : x);
 
-  test("Arguments response, Evidence, the dock counter and every open panel stop showing the old run", async () => {
+  test("Arguments response, Evidence, the evidence counter and every view stop showing the old run", async () => {
     const t = createTestApi({ hooks: { "/api/call": () => { if (fail) down()(); } } });
     vi.stubGlobal("fetch", fetchFrom(t.api));
     render(<App />);
@@ -76,9 +76,8 @@ describe("a failed run clears the previous one (every surface of the page)", () 
     click("tool-who_has_role");
     click("run");
     await waitFor(() => expect(screen.getByTestId("response-json")).toBeTruthy());
-    expect(tid("dock-counter").textContent).toMatch(/Not started|Message/);
-    for (const id of ["reel", "tokens", "sequence", "diagram", "trace"]) click(`dock-${id}`);
-    await waitFor(() => expect(tid("panel-trace")).toBeTruthy());
+    expect(tid("evidence-counter").textContent).toMatch(/Not started|Message/);
+    for (const id of ["reel", "tokens", "sequence", "diagram", "trace"]) click(`etab-${id}`);
 
     fail = true;
     click("run");
@@ -90,10 +89,12 @@ describe("a failed run clears the previous one (every surface of the page)", () 
     click("tab-evidence");
     expect(tid("evidence-empty")).toBeTruthy();
     expect(screen.queryByTestId("evidence-panel")).toBeNull();
-    // the dock counter and the panels
-    expect(tid("dock-counter").textContent).toBe("No run yet");
+    // the evidence counter and the views
+    click("etab-reel");
+    expect(tid("evidence-counter").textContent).toBe("No run yet");
     for (const id of ["reel", "tokens", "sequence", "diagram", "trace"]) {
-      const text = tid(`panel-${id}`).textContent;
+      click(`etab-${id}`);
+      const text = tid(`epanel-${id}`).textContent;
       expect(text, id).not.toMatch(/Message \d+ of \d+/);
       expect(text, id).not.toMatch(/who_has_role/); // the diagram legend names every outcome as a static box, so the run's own tool name is the marker
     }

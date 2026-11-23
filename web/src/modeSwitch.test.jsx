@@ -1,49 +1,47 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import App from "./App.jsx";
 import { createTestApi, fetchFrom } from "./testLab.js";
 
-// N5 (fix pass): the card above the panels changes height when the mode changes, so a panel that was placed for the old card could sit over the new
-// card and its buttons. A Mock/Real switch closes every panel (the dock is remounted); reopening places it afresh under the new card.
+// N5 (fix pass): the views now live in the inline evidence tab row (EvidenceTabs) under the verdict card; a Mock/Real switch remounts it, so the
+// walk and any open step detail start over and the new mode's data is shown. The 409-safety of the switch itself is unchanged.
 const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
 beforeEach(() => { try { localStorage.clear(); } catch { /* none */ } });
 afterEach(() => { vi.unstubAllGlobals(); });
 const tid = (x) => screen.getByTestId(x);
 
-describe("a Mock/Real switch and the open panels", () => {
-  test("open panels are closed by the switch, in both directions, and the dock buttons are not pressed", async () => {
+describe("a Mock/Real switch and the evidence views", () => {
+  test("the switch remounts the evidence row: the walk starts over and the new mode's empty state is shown", async () => {
     const t = createTestApi({ env: REAL_ENV });
     vi.stubGlobal("fetch", fetchFrom(t.api));
     render(<App />);
     await screen.findByTestId("verdict-card");
     fireEvent.click(tid("action-discover"));
     await waitFor(() => expect(tid("verdict-word").textContent).toBe("Allowed"));
-    fireEvent.click(tid("dock-reel")); fireEvent.click(tid("dock-trace"));
-    await waitFor(() => expect(tid("panel-reel")).toBeInTheDocument());
-    expect(tid("dock-reel")).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(tid("etab-reel"));
+    expect(tid("epanel-reel")).toBeInTheDocument();
+    fireEvent.click(within(tid("epanel-reel")).getByTestId("step-next"));
+    await waitFor(() => expect(tid("evidence-counter")).toHaveTextContent("Message 1 of"));
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
     await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
-    expect(screen.queryByTestId("panel-reel")).toBeNull();
-    expect(screen.queryByTestId("panel-trace")).toBeNull();
-    expect(tid("dock-reel")).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(tid("dock-reel"));
-    await waitFor(() => expect(tid("panel-reel")).toBeInTheDocument());
+    expect(tid("evidence-counter")).toHaveTextContent("No run yet");
+    expect(within(tid("epanel-reel")).getByTestId("reel-none")).toBeInTheDocument();
     fireEvent.change(tid("mode-select"), { target: { value: "mock" } });
     await waitFor(() => expect(tid("sim-banner")).not.toHaveAttribute("data-state"));
-    expect(screen.queryByTestId("panel-reel")).toBeNull();
+    expect(tid("evidence-counter")).toHaveTextContent("No run yet");
   });
 
-  test("a switch that fails (Real not configured, 409) leaves the panels as they were", async () => {
+  test("a switch that fails (Real not configured, 409) leaves the evidence views as they were", async () => {
     const t = createTestApi();
     vi.stubGlobal("fetch", fetchFrom(t.api));
     render(<App />);
     await screen.findByTestId("verdict-card");
-    fireEvent.click(tid("dock-reel"));
-    await waitFor(() => expect(tid("panel-reel")).toBeInTheDocument());
+    fireEvent.click(tid("etab-reel"));
+    await waitFor(() => expect(tid("epanel-reel")).toBeInTheDocument());
     fireEvent.change(tid("mode-select"), { target: { value: "real" } }); // the option is disabled in the page, but the handler must still be safe
     await new Promise((r) => setTimeout(r, 30));
-    expect(tid("panel-reel")).toBeInTheDocument();
+    expect(tid("epanel-reel")).toBeInTheDocument();
   });
 
   // N6: the rail heading says what the data under it says.

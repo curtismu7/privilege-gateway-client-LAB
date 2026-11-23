@@ -17,7 +17,7 @@ import { releaseDialogFocus } from "./panels/autoFocus.js";
 import { useContent } from "./useContent.js";
 import { workspace } from "./api.js";
 import { badStoryParam, storyBlock, storyIdFromSearch } from "./storyView.js";
-import PanelDock from "./panels/PanelDock.jsx";
+import EvidenceTabs from "./panels/EvidenceTabs.jsx";
 import { useRunStepper } from "./panels/useRunStepper.js";
 import { useLab } from "./useLab.js";
 import { useTheme } from "./useTheme.js";
@@ -133,7 +133,7 @@ export default function App() {
   const [dockGen, setDockGen] = useState(0); // a Mock/Real switch closes the open panels (the card above them changes height)
   const [talkAt, setTalkAt] = useState(null);
   const openTalk = () => {
-    const where = { headerBottom: document.querySelector(".shell-bar")?.getBoundingClientRect().bottom ?? 72, dockH: document.querySelector(".pgc-dock")?.getBoundingClientRect().height ?? 56 };
+    const where = { headerBottom: document.querySelector(".shell-bar")?.getBoundingClientRect().bottom ?? 72, dockH: 56 };
     seedTalkPlace(TALK_KEY, where);
     setTalkAt((at) => at ?? talkPlace(where)); // the place is also the dialog's default, so it holds when storage is unavailable
     setTalkSeen(true); setTalkOpen(true);
@@ -308,7 +308,7 @@ export default function App() {
         </div>
       </div>
       <SignIn mode={source} isOpen={signinOpen} onClose={() => setSigninOpen(false)} lab={lab} />
-      <PanelDock key={`${panelGen}-${dockGen}`} run={lab.lastRun} stepper={stepper} onTalkTrack={toggleTalk} talkActive={talkOpen} presenter={present} />
+      <EvidenceTabs key={`${panelGen}-${dockGen}`} run={lab.lastRun} stepper={stepper} presenter={present} />
       {talkSeen && (
         <TalkTrack key={`talk-${panelGen}`} isOpen={talkOpen} onClose={() => setTalkOpen(false)} storageKey={TALK_KEY} place={talkAt}
           title={`Talk track${content.customer ? ` · ${content.customer.verticals.find((v) => v.id === content.vertical)?.label ?? ""}` : ""}`}
