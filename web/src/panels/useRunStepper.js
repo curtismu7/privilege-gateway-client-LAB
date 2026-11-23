@@ -34,8 +34,10 @@ export function useRunStepper(hops = EMPTY, verdictId = null) {
   const [s, dispatch] = useReducer(reduce, total, initial);
   const [extra, setExtra] = useState(null); // a hop that did not run, picked from the "not in this run" chip
 
-  // A new run starts the walk over (a new array, even of the same length).
-  useEffect(() => { dispatch({ type: "total", total }); setExtra(null); }, [plan]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A new run starts the walk over (a new array, even of the same length). This is done while rendering, not in an effect: an effect runs
+  // after the new run is on screen, so a click on Next in between was undone by the late reset (the flaky panels tests on CI).
+  const [planSeen, setPlanSeen] = useState(plan);
+  if (planSeen !== plan) { setPlanSeen(plan); dispatch({ type: "total", total }); setExtra(null); }
 
   // The timer. At the stop hop it pauses instead of ticking.
   useEffect(() => {

@@ -1,6 +1,7 @@
 // The one walkthrough over the real hops of real runs (the lab core behind testLab.js): which hop each situation stops at, that Next from a
 // fresh page starts paused at message 1, that a new run starts over, and that the timer walks and stops.
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { useLayoutEffect } from "react";
 import { act, renderHook } from "@testing-library/react";
 import { createTestApi } from "../testLab.js";
 import { planRun, counterText, useRunStepper } from "./useRunStepper.js";
@@ -137,6 +138,19 @@ describe("useRunStepper", () => {
     expect(result.current.step).toBe(4);
     rerender({ run: b });
     expect(result.current).toMatchObject({ step: -1, selected: null, started: false });
+  });
+  test("a new run never reaches the screen with the old run's step (no frame where a click on Next could be undone by a late reset)", async () => {
+    const a = await call("list_entitlements");
+    const b = await call("get_portfolio_summary");
+    const drawn = []; // what each committed render showed: which run, and which step
+    const { result, rerender } = renderHook(({ run }) => {
+      const st = useRunStepper(run.hops, run.verdict.id);
+      useLayoutEffect(() => { drawn.push({ run: run === a ? "a" : "b", step: st.step }); });
+      return st;
+    }, { initialProps: { run: a } });
+    act(() => result.current.select(5));
+    rerender({ run: b });
+    expect(drawn.filter((d) => d.run === "b")).toEqual([{ run: "b", step: -1 }]);
   });
 
   test("speed changes the timer", async () => {
