@@ -33,13 +33,13 @@ html { -webkit-text-size-adjust: 100%; font-size: var(--fs, 16px); }
 
 /* Every button is Ping Red, white text (owner, 2026-11-22). The family red is captured once here at the root, so the panels and tabs that remap
    --accent to ink further down do not turn their buttons ink. Selected or pressed is the deep red with a white ring so it still reads as "on";
-   disabled is neutral grey, not a faded red. Selection cards (door and tool tiles), the verdict chips in Chat, everything inside the movie reel (its frames and controls keep the shared reel look, owner 2026-11-23) and link-style buttons keep their own look: white text on a
+   disabled is neutral grey, not a faded red. Selection cards (door and tool tiles), the verdict chips in Chat, everything inside the movie reel (its frames and controls keep the shared reel look, owner 2026-11-23), the tabs (ink when selected, owner 2026-11-23) and link-style buttons keep their own look: white text on a
    full red card would hide their descriptions. Verdicts are never red: a refusal stays amber with a lock and the word. */
 :root { --btn-bg: var(--accent-gradient); --btn-deep: var(--accent-deep); --btn-edge: var(--primary-edge); --btn-on: var(--on-accent); --btn-off: var(--accent-inactive-gradient); --btn-off-edge: var(--accent-inactive); }
-button:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *), .pgc-go { background: var(--btn-bg); color: var(--btn-on); border-color: var(--btn-edge); }
+button:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]), .pgc-go { background: var(--btn-bg); color: var(--btn-on); border-color: var(--btn-edge); }
 .pgc-go { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
-button[aria-pressed="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *), button[aria-selected="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *) { background: var(--btn-deep); color: var(--btn-on); border-color: var(--btn-on); box-shadow: inset 0 0 0 2px var(--btn-on); }
-button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *), .pgc-go:disabled { background: var(--btn-off); color: var(--btn-on); border-color: var(--btn-off-edge); opacity: 1; box-shadow: none; }
+button[aria-pressed="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]), button[aria-selected="true"]:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]) { background: var(--btn-deep); color: var(--btn-on); border-color: var(--btn-on); box-shadow: inset 0 0 0 2px var(--btn-on); }
+button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipword--btn):not(.rl-wrap *):not([role="tab"]), .pgc-go:disabled { background: var(--btn-off); color: var(--btn-on); border-color: var(--btn-off-edge); opacity: 1; box-shadow: none; }
 
 /* ---- page layout ------------------------------------------------------------------------------------------------------------------- */
 .pgc-layout { display: grid; grid-template-columns: var(--rail-w, 21rem) 4px minmax(0, 1fr); gap: 1rem; margin-top: 1rem; align-items: start; }
