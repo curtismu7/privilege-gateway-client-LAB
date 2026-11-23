@@ -492,6 +492,15 @@ describe("Real agent chat", () => {
     expect(tid("signin-why")).toHaveTextContent(/do not need one/);
   });
 
+  test("hosted: after the redirect sign-in the rail says 'Signed in with PingOne', without the pi.flow label", async () => {
+    const authConfig = { workspace: "default", source: "real", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "redirect", configured: true, problems: [] } };
+    const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
+    await mount({ env: AGENT_ENV, authConfig, session: me });
+    await toReal();
+    expect(tid("rail")).toHaveTextContent("Signed in with PingOne");
+    expect(tid("rail")).not.toHaveTextContent("pi.flow");
+  });
+
   test("the Real agent note names the Privilege LLM gateway when the agent goes through it", async () => {
     await mount({ env: { ...REAL_ENV, PGC_LLM_GATEWAY_URL: "https://llm-gw.example", PGC_LLM_VIRTUAL_KEY: "test-only-llm-key", PGC_AGENT_MODEL: "claude-sonnet-4-5" } });
     await toReal();
