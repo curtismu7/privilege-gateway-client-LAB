@@ -43,7 +43,7 @@ The rollout model allows a hosted Real instance only as "a Ping-operated real in
 - The daily agent cap counts only turns that reached the model; gateway-style model ids are kept; the `deploy.sh` tag check reads the last path segment; stale comments and the CLAUDE.md line fixed; a signed-in web test added.
 
 ## Status of the outside pieces (2026-11-23)
-- Sign-in app `privilege-gateway-client-hosted` created in the AI-DEMO2 environment (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in `~/.config/demo-kit/pgc-hosted.env`.
+- Sign-in app `privilege-gateway-client-hosted` created in the PingOne environment where the hosted-access colleagues are (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in `~/.config/demo-kit/pgc-hosted.env`.
 - Keys: waiting on the Pingid-privilege rebuild (new tenant). The rebuild session will create the three door keys, their grants and `pgc-agent-llm` after the gateway cutover.
 - Not done: local proof with a live sign-in, the image, the Secret, the deploy (owner go).
 
