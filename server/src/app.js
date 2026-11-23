@@ -96,7 +96,8 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
       const entry = state ? authFlow.redirectRuns.get(state) : undefined;
       if (state) authFlow.redirectRuns.delete(state);
       const back = (ret, err) => res.redirect(302, err ? `${ret}${ret.includes('?') ? '&' : '?'}signin_error=${encodeURIComponent(err)}` : ret);
-      const ret = entry?.ret ?? '/';
+      // "./" (not "/") when the state is unknown: the browser resolves it beside /callback, so behind a path proxy it stays on the lab.
+      const ret = entry?.ret ?? './';
       try {
         const out = await authFlow.loginApi().redirectFinish(entry?.run, { code: req.query.code, state, error: req.query.error });
         const maxAge = Math.floor(authFlow.settings.sessionTtlMs / 1000);
@@ -259,7 +260,7 @@ function mountAuthRoutes(api, lab, auth) {
     api.get('/auth/redirect/start', (req, res) => {
       noStore(res);
       if (!liveOk(res)) return;
-      const ret = typeof req.query.return === 'string' && RETURN_PATH.test(req.query.return) ? req.query.return : '/';
+      const ret = typeof req.query.return === 'string' && RETURN_PATH.test(req.query.return) ? req.query.return : './';
       const { url, run } = loginApi().redirectStart();
       redirectRuns.set(run.state, { run, workspace: req.workspaceId, ret });
       res.redirect(302, url);

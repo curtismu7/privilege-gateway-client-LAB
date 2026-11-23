@@ -271,17 +271,21 @@ test('hosted redirect sign-in: a refusal, a forged state and a failed token step
   try {
     const b = browser();
     const state = () => noFollow(b, '/api/auth/redirect/start').then((r) => new URL(r.headers.get('location')).searchParams.get('state'));
+    // With no return path (or an unknown state) the page is "./": the browser resolves it beside /callback, so behind a path proxy
+    // (https://<proxy>/<lab>/callback) the person lands on the lab, not on the site root.
     const refused = await noFollow(b, `/callback?error=access_denied&state=${encodeURIComponent(await state())}`);
-    assert.equal(refused.headers.get('location'), '/?signin_error=signin_refused');
+    assert.equal(refused.headers.get('location'), './?signin_error=signin_refused');
     const forged = await noFollow(b, '/callback?code=x&state=not-a-state-we-made');
-    assert.equal(forged.headers.get('location'), '/?signin_error=no_run');
+    assert.equal(forged.headers.get('location'), './?signin_error=no_run');
+    assert.equal(new URL(forged.headers.get('location'), 'https://proxy.example/privilege-gateway-client/callback?code=x').pathname, '/privilege-gateway-client/');
+    assert.equal(new URL(forged.headers.get('location'), 'https://lab.example/callback').pathname, '/');
     const token = await noFollow(b, `/callback?code=x&state=${encodeURIComponent(await state())}`);
-    assert.equal(token.headers.get('location'), '/?signin_error=token_refused');
+    assert.equal(token.headers.get('location'), './?signin_error=token_refused');
     assert.equal((await (await b.get('/api/session')).json()).me, null);
-    // A return path that is not a plain path on this site is replaced by "/".
+    // A return path that is not a plain path on this site is replaced by "./".
     const evil = await noFollow(b, '/api/auth/redirect/start?return=' + encodeURIComponent('//evil.example/x'));
     const st = new URL(evil.headers.get('location')).searchParams.get('state');
-    assert.equal((await noFollow(b, `/callback?error=x&state=${encodeURIComponent(st)}`)).headers.get('location'), '/?signin_error=signin_refused');
+    assert.equal((await noFollow(b, `/callback?error=x&state=${encodeURIComponent(st)}`)).headers.get('location'), './?signin_error=signin_refused');
   } finally { await lab.close(); await gw.close(); lab = null; }
 });
 
