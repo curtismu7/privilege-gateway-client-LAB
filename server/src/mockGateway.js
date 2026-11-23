@@ -91,7 +91,7 @@ export function createMockGateway({ doors = DOORS, tools = TOOLS, keys = {}, now
     }
     const authOk = decision('authenticated', 'Agent key', 'pass', 'the key matches the one this door accepts');
 
-    // 2. The door's policy: demo-blocked has none, so every caller is refused, before anything is listed.
+    // 2. The door's policy: lab-banking-blocked has none, so every caller is refused, before anything is listed.
     if (door.grant === null) {
       return reply(403, { error: 'forbidden', message: `Door ${doorId} has no policy, so every caller is refused.`, _meta: SIM }, {},
         [authOk, decision('door-policy', 'Door has a policy', 'fail', 'no policy is attached to this door'), decision('grant', 'Grant', 'skipped', 'not reached: there is no policy to read a grant from')]);

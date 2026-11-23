@@ -6,7 +6,7 @@ import { createTestApi, fetchFrom } from "./testLab.js";
 
 // N5 (fix pass): the views now live in the inline evidence tab row (EvidenceTabs) under the verdict card; a Mock/Real switch remounts it, so the
 // walk and any open step detail start over and the new mode's data is shown. The 409-safety of the switch itself is unchanged.
-const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "lab-banking-full", PGC_GW_KEY_LAB_BANKING_FULL: "test-only-key" };
 beforeEach(() => { try { localStorage.clear(); } catch { /* none */ } });
 afterEach(() => { vi.unstubAllGlobals(); });
 const tid = (x) => screen.getByTestId(x);

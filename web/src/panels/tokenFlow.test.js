@@ -39,7 +39,7 @@ describe("buildTokenFlow on a real Mock run", () => {
   const { api, lab } = createTestApi();
   test("the token issued by the exchange is the first token; the introspection of it is the same token", async () => {
     const a = lab.info().catalog.find((x) => x.name === "list_entitlements").args;
-    const run = await api("/api/call", { method: "POST", body: { door: "demo-all-tools", tool: "list_entitlements", arguments: a } });
+    const run = await api("/api/call", { method: "POST", body: { door: "lab-banking-full", tool: "list_entitlements", arguments: a } });
     const flow = buildTokenFlow(run.hops);
     expect(flow.map((f) => f.hop.n)).toEqual(run.hops.filter((h) => h.verdict !== "skip").map((h) => h.n));
     const withTokens = flow.filter((f) => f.tokens.length);

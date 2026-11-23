@@ -6,7 +6,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import App from "./App.jsx";
 import { createTestApi, fetchFrom } from "./testLab.js";
 
-const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "lab-banking-full", PGC_GW_KEY_LAB_BANKING_FULL: "test-only-key" };
 let t;
 const mount = async (opts = {}, search = "") => {
   window.history.replaceState(null, "", `/${search}`);
@@ -33,12 +33,12 @@ describe("stories", () => {
     await waitWord("Blocked by policy");
     expect(tid("story-card")).toHaveTextContent("S02 · The door that permits some tools");
     expect(tid("story-select")).toHaveValue("S02");
-    expect(tid("door-demo-some-tools")).toHaveAttribute("aria-checked", "true");
+    expect(tid("door-lab-banking-limited")).toHaveAttribute("aria-checked", "true");
     expect(tid("story-check")).toHaveTextContent("This run gave Blocked by policy, as the story says.");
     // a call story lands on the response tab with the tool selected
     expect(tid("tab-args")).toHaveAttribute("aria-selected", "true");
     expect(t.calls.filter((c) => c.path === "/api/call")).toHaveLength(1);
-    expect(t.calls.find((c) => c.path === "/api/call").body).toMatchObject({ door: "demo-some-tools", tool: "sensitive_payroll_details" });
+    expect(t.calls.find((c) => c.path === "/api/call").body).toMatchObject({ door: "lab-banking-limited", tool: "sensitive_payroll_details" });
   });
 
   test("every one of the six links works: the story names a door and a run, and the verdict is the one it expects", async () => {
@@ -141,7 +141,7 @@ describe("stories", () => {
     expect(tid("story-block")).toHaveTextContent(/runs in Mock only/);
     expect(tid("story-run")).toBeDisabled();
     expect(tid("story-step-run-1")).toBeDisabled();
-    pick("S01"); // demo-all-tools is the one door this Real config has
+    pick("S01"); // lab-banking-full is the one door this Real config has
     expect(q("story-block")).toBeNull();
     expect(tid("story-run")).not.toBeDisabled();
   });

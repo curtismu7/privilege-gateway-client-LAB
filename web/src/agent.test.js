@@ -22,13 +22,13 @@ describe("the simulated agent reads the message", () => {
   test("different messages never get one canned reply", () => {
     const allowed = { verdict: { id: "allowed", word: "Allowed", sentence: "s", basis: "checked" }, tools: [{ name: "a" }, { name: "b" }] };
     const blocked = { verdict: { id: "blocked", word: "Blocked by policy", sentence: "The tool is not in the grant.", basis: "checked" } };
-    const ctx = (run) => ({ run, door: "demo-some-tools", name: "aidemo" });
+    const ctx = (run) => ({ run, door: "lab-banking-limited", name: "aidemo" });
     const a = replyFor({ intent: "list" }, ctx(allowed));
     const b = replyFor({ intent: "run", tool: "sensitive_tax_record" }, ctx(blocked));
     const c = replyFor({ intent: "run", tool: "who_has_role" }, ctx({ verdict: { id: "allowed", word: "Allowed", sentence: "s" } }));
     const d = replyFor({ intent: "help" }, {});
     expect(new Set([a.text, b.text, c.text, d.text]).size).toBe(4);
-    expect(a.text).toMatch(/lists 2 tools on demo-some-tools for aidemo: a, b/);
+    expect(a.text).toMatch(/lists 2 tools on lab-banking-limited for aidemo: a, b/);
     expect(a.chip).toEqual({ id: "allowed", word: "Allowed" });
     expect(b.text).toMatch(/refused/);
     expect(b.chip.word).toBe("Blocked by policy");
@@ -37,7 +37,7 @@ describe("the simulated agent reads the message", () => {
   });
 
   test("a list that cannot be read says why instead of inventing tools", () => {
-    const r = replyFor({ intent: "list" }, { run: { verdict: { id: "blocked", word: "Blocked by policy", sentence: "No policy." } }, door: "demo-blocked", name: "aidemo" });
+    const r = replyFor({ intent: "list" }, { run: { verdict: { id: "blocked", word: "Blocked by policy", sentence: "No policy." } }, door: "lab-banking-blocked", name: "aidemo" });
     expect(r.text).toMatch(/could not list/);
     expect(r.text).toMatch(/No policy/);
   });

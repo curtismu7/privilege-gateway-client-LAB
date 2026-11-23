@@ -9,9 +9,9 @@ const READ_ONLY = [
 ];
 
 export const DOORS = Object.freeze([
-  { id: 'demo-all-tools', description: 'Every tool: all 18 listed and permitted.', policy: 'demo-all-tools', grant: 'all' },
-  { id: 'demo-some-tools', description: '7 read-only tools listed; the other 11 are not listed, and a call to one is refused.', policy: 'demo-some-tools', grant: READ_ONLY },
-  { id: 'demo-blocked', description: 'No policy, so the gateway refuses every caller.', policy: null, grant: null },
+  { id: 'lab-banking-full', description: 'Every tool: all 18 listed and permitted.', policy: 'lab-banking-full', grant: 'all' },
+  { id: 'lab-banking-limited', description: '7 read-only tools listed; the other 11 are not listed, and a call to one is refused.', policy: 'lab-banking-limited', grant: READ_ONLY },
+  { id: 'lab-banking-blocked', description: 'No policy, so the gateway refuses every caller.', policy: null, grant: null },
 ]);
 
 // sample = the invented data a simulated allowed call returns. hitl = the approval policy a write waits on (Mock only).
@@ -60,7 +60,7 @@ export const grantedTools = (door) => TOOLS.filter((t) => isPermitted(door, t.na
 export const DOOR_NAME = /^[a-z0-9][a-z0-9-]{0,62}$/;
 export const TOOL_NAME = /^[A-Za-z0-9_.-]{1,64}$/;
 
-// The environment variable suffix and the shared client's caller id for a door: demo-all-tools -> demo_all_tools.
+// The environment variable suffix and the shared client's caller id for a door: lab-banking-full -> lab_banking_full.
 export const callerIdFor = (doorId) => String(doorId).replace(/-/g, '_').toLowerCase();
 
 // Sample arguments for a tool name the lab knows (UI help only; a Real tool the lab does not know has none).

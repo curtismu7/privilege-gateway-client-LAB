@@ -3,7 +3,7 @@ import { cardFor, resultText, ICONS, runLook, basisText, shownBasis } from "./ve
 
 const info = (source = "mock") => ({ source, identity: { label: source === "mock" ? "Identity the gateway evaluated" : "Identity declared by this lab's settings", name: source === "mock" ? "aidemo" : null, email: null } });
 const run = (id, over = {}, source = "mock") => ({ action: "call", tool: "t", scenario: "none", identity: info(source).identity, verdict: { id, word: id, sentence: "S", basis: "checked", source, simulated: source === "mock", status: 403, next: [], detail: null }, ...over });
-const card = (r, extra = {}, source = "mock") => cardFor({ busy: null, failure: null, lastRun: r, door: "demo-some-tools", info: info(source), hasTools: true, ...extra });
+const card = (r, extra = {}, source = "mock") => cardFor({ busy: null, failure: null, lastRun: r, door: "lab-banking-limited", info: info(source), hasTools: true, ...extra });
 
 describe("verdict card model", () => {
   test("a refusal is never red: blocked and held are amber, the rest neutral or green", () => {
@@ -51,7 +51,7 @@ describe("verdict card model", () => {
   test("facts: identity from one source (the server's label), door, tool and result", () => {
     const c = card(run("blocked"));
     expect(c.facts[0]).toEqual(["Identity the gateway evaluated", "aidemo", null]);
-    expect(c.facts[1][1]).toBe("demo-some-tools");
+    expect(c.facts[1][1]).toBe("lab-banking-limited");
     expect(c.facts[2][1]).toBe("t");
     expect(c.facts[3][1]).toBe("Refused (HTTP 403)");
     const r = card(run("blocked", { identity: { label: "Identity declared by this lab's settings", name: "agent-owner", email: null } }, "real"), {}, "real");

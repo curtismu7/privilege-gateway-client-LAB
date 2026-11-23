@@ -192,7 +192,7 @@ def vertical_checks(browser, w, h, vp, theme):
         if brand:
             check(f"{T} {v}: the story speaks of {brand}", brand in t, t[:120])
     check(f"{T} the three packs give three different texts", len(set(words.values())) == 3)
-    check(f"{T} the door and the run did not change with the vertical (only the words)", word(page) == "Allowed" and page.get_attribute('[data-testid="door-demo-all-tools"]', "aria-checked") == "true" if page.is_visible('[data-testid="door-demo-all-tools"]') else True)
+    check(f"{T} the door and the run did not change with the vertical (only the words)", word(page) == "Allowed" and page.get_attribute('[data-testid="door-lab-banking-full"]', "aria-checked") == "true" if page.is_visible('[data-testid="door-lab-banking-full"]') else True)
     check(f"{T} no hostile popups and no console errors", clean(page), str(page.msgs))
     ctx.close()
 

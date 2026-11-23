@@ -70,11 +70,11 @@ export function decideModel(input, { mode, configured = false } = {}) {
 export function selfTest() {
   const REAL = 'https://gateway.example';
   const cases = [
-    ['mock serves the mock gateway', `${MOCK_ORIGIN}/demo-all-tools/mcp`, { mode: 'mock' }, 'allow'],
-    ['mock refuses a real-looking origin', 'https://gateway.example/demo-all-tools/mcp', { mode: 'mock', realOrigin: REAL }, 'blocked_mock'],
+    ['mock serves the mock gateway', `${MOCK_ORIGIN}/lab-banking-full/mcp`, { mode: 'mock' }, 'allow'],
+    ['mock refuses a real-looking origin', 'https://gateway.example/lab-banking-full/mcp', { mode: 'mock', realOrigin: REAL }, 'blocked_mock'],
     ['mock refuses even loopback', 'http://127.0.0.1:9/x', { mode: 'mock' }, 'blocked_mock'],
     ['real refuses everything when not configured', 'https://gateway.example/x', { mode: 'real' }, 'real_not_configured'],
-    ['real allows the one configured origin', 'https://gateway.example/demo-all-tools/mcp', { mode: 'real', realOrigin: REAL }, 'allow'],
+    ['real allows the one configured origin', 'https://gateway.example/lab-banking-full/mcp', { mode: 'real', realOrigin: REAL }, 'allow'],
     ['real refuses another origin', 'https://other.example/x', { mode: 'real', realOrigin: REAL }, 'blocked_origin'],
     ['real refuses a sibling host and a different port', 'https://gateway.example:8443/x', { mode: 'real', realOrigin: REAL }, 'blocked_origin'],
     ['real refuses plain http to a remote host', 'http://gateway.example/x', { mode: 'real', realOrigin: 'http://gateway.example' }, 'blocked_scheme'],

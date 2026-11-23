@@ -180,10 +180,10 @@ test('demoAdmin is a normal user: same session shape and same answers as demouse
     assert.deepEqual((await (await fetch(`${lab.base}/api/auth/mock/personas`)).json()).personas.map((p) => p.id), ['aidemo', 'demouser', 'demoAdmin']);
     // No extra privileges: every door, tool, scenario and verdict is exactly what demouser gets (a refusal stays a refusal).
     for (const body of [
-      { door: 'demo-all-tools', tool: 'list_entitlements', arguments: { user: 'aidemo' } },
-      { door: 'demo-some-tools', tool: 'sensitive_payroll_details', arguments: {} },
-      { door: 'demo-blocked', tool: 'list_entitlements', arguments: {} },
-      { door: 'demo-some-tools', tool: 'list_entitlements', arguments: { user: 'aidemo' }, scenario: 'no-key' },
+      { door: 'lab-banking-full', tool: 'list_entitlements', arguments: { user: 'aidemo' } },
+      { door: 'lab-banking-limited', tool: 'sensitive_payroll_details', arguments: {} },
+      { door: 'lab-banking-blocked', tool: 'list_entitlements', arguments: {} },
+      { door: 'lab-banking-limited', tool: 'list_entitlements', arguments: { user: 'aidemo' }, scenario: 'no-key' },
     ]) {
       const ru = await run(asUser, body); const ra = await run(asAdmin, body);
       assert.deepEqual(ra.verdict, ru.verdict, JSON.stringify(body));
@@ -245,7 +245,7 @@ test('a Mock persona does not carry into Real, and the picker is refused in Real
 
 test('the identity-mismatch scenario shows the signed-in persona as the page login, except when it is the gateway identity', async () => {
   const lab = await startLab({ env: MOCK_ON });
-  const mismatch = (cookie) => postJson(lab.base, '/api/call', { door: 'demo-all-tools', tool: 'list_entitlements', arguments: { user: 'aidemo' }, scenario: 'identity-mismatch' }, { origin: lab.base, cookie });
+  const mismatch = (cookie) => postJson(lab.base, '/api/call', { door: 'lab-banking-full', tool: 'list_entitlements', arguments: { user: 'aidemo' }, scenario: 'identity-mismatch' }, { origin: lab.base, cookie });
   try {
     const none = await (await mismatch('')).json();
     assert.equal(none.identity.pageLogin.name, 'demouser', 'nobody signed in: the scenario\'s own page-login user');

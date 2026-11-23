@@ -19,7 +19,7 @@ describe("the tabs' calm look", () => {
     await mount();
     expect(tabs().classList.contains("pgc-calm")).toBe(true);
     expect(tabs().classList.contains("pgc-calm--refusal")).toBe(false);
-    fireEvent.click(tid("door-demo-blocked"));
+    fireEvent.click(tid("door-lab-banking-blocked"));
     fireEvent.click(tid("action-discover"));
     await waitFor(() => expect(tid("verdict-word").textContent).toBe("Blocked by policy"));
     expect(tabs().classList.contains("pgc-calm--refusal")).toBe(true);

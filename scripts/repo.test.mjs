@@ -49,7 +49,7 @@ test('.gitignore keeps .env, node_modules and dist out of the repo', () => {
 });
 
 test('.env.example lists names only: no value except the port, the .example gateway placeholder and the three door names', () => {
-  const ok = new Set(['7833', 'https://gateway.example', 'demo-all-tools,demo-some-tools,demo-blocked']);
+  const ok = new Set(['7833', 'https://gateway.example', 'lab-banking-full,lab-banking-limited,lab-banking-blocked']);
   const keys = [];
   for (const line of read('.env.example').split('\n')) {
     const m = /^#?\s*([A-Z][A-Z0-9_]+)=(.*)$/.exec(line.trim());
@@ -57,7 +57,7 @@ test('.env.example lists names only: no value except the port, the .example gate
     keys.push(m[1]);
     if (m[2].trim()) assert.ok(ok.has(m[2].trim()), `${m[1]} carries a value`);
   }
-  for (const k of ['PORT', 'MODE', 'PGC_GW_URL', 'PGC_GW_APPS', 'PGC_GW_KEY_DEMO_ALL_TOOLS', 'PGC_GW_KEY_DEMO_SOME_TOOLS', 'PGC_GW_KEY_DEMO_BLOCKED', 'PGC_PINGONE_ENVIRONMENT_ID', 'PGC_USER_CLIENT_ID']) assert.ok(keys.includes(k), k);
+  for (const k of ['PORT', 'MODE', 'PGC_GW_URL', 'PGC_GW_APPS', 'PGC_GW_KEY_LAB_BANKING_FULL', 'PGC_GW_KEY_LAB_BANKING_LIMITED', 'PGC_GW_KEY_LAB_BANKING_BLOCKED', 'PGC_PINGONE_ENVIRONMENT_ID', 'PGC_USER_CLIENT_ID']) assert.ok(keys.includes(k), k);
   for (const l of read('.env.example').split('\n')) assert.doesNotMatch(l, /^[A-Z][A-Z0-9_]+=\S/, `an uncommented value: ${l.split('=')[0]}`);
 });
 

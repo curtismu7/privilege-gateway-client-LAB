@@ -79,7 +79,7 @@ describe("the evidence tab row", () => {
 describe("one walkthrough, five views", () => {
   test("Next from a fresh page starts paused at message 1 and the reel, the token sequence and the sequence view all follow that same hop", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     const reel = view("reel");
     expect(tid("evidence-counter")).toHaveTextContent("Not started, 8 messages");
     expect(within(reel).queryByTestId("step-detail")).toBeNull();
@@ -106,7 +106,7 @@ describe("one walkthrough, five views", () => {
 
   test("only one counter announces (aria-live polite): the stepped view's bar when a stepped view is on, else the row's counter", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     // the reel is the tab that opens with the row: its bar owns the announcement from the start
     const reel = tid("epanel-reel");
     expect(tid("evidence-counter")).toHaveAttribute("aria-live", "off");
@@ -117,7 +117,7 @@ describe("one walkthrough, five views", () => {
 
   test("a new run starts the walk over in every view", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     const reel = view("reel");
     click(within(reel).getByTestId("step-next"));
     click(within(reel).getByTestId("step-next"));
@@ -144,7 +144,7 @@ describe("one walkthrough, five views", () => {
 describe("what each view shows for each kind of run", () => {
   test("blocked by policy: the reel stops at the Privilege decision and says denied; the run note says where Simulate stopped; the view is not the red kind", async () => {
     await mount();
-    await runTool("demo-some-tools", "sensitive_tax_record");
+    await runTool("lab-banking-limited", "sensitive_tax_record");
     await waitWord("Blocked by policy");
     const reel = view("reel");
     click(within(reel).getByTestId("step-toggle")); // Simulate
@@ -162,7 +162,7 @@ describe("what each view shows for each kind of run", () => {
 
   test("held: stops waiting on the human, and says it is simulated", async () => {
     await mount();
-    await runTool("demo-all-tools", "open_ticket");
+    await runTool("lab-banking-full", "open_ticket");
     await waitWord("Held");
     const seq = view("sequence");
     click(within(seq).getByTestId("step-toggle"));
@@ -174,7 +174,7 @@ describe("what each view shows for each kind of run", () => {
 
   test("an upstream error in Mock is not the red kind of view (red is for a real error; where it stops is covered by planRun)", async () => {
     await mount();
-    click("door-demo-all-tools");
+    click("door-lab-banking-full");
     fireEvent.change(document.getElementById("pgc-scenario"), { target: { value: "upstream-error" } });
     click("action-discover");
     await waitWord("Upstream error");
@@ -185,7 +185,7 @@ describe("what each view shows for each kind of run", () => {
 
   test("an upstream failure reads 'failed', not 'denied': the failed frame is verdict error, Simulate stops on it, no frame says denied", async () => {
     await mount();
-    click("door-demo-all-tools");
+    click("door-lab-banking-full");
     fireEvent.change(document.getElementById("pgc-scenario"), { target: { value: "upstream-error" } });
     click("action-discover");
     await waitWord("Upstream error");
@@ -203,7 +203,7 @@ describe("what each view shows for each kind of run", () => {
 
   test("a blocked door: the reel ends at its decision, hops that did not run sit behind the 'not in this run' chip", async () => {
     await mount();
-    click("door-demo-blocked");
+    click("door-lab-banking-blocked");
     click("action-discover");
     await waitWord("Blocked by policy");
     view("reel");
@@ -213,9 +213,9 @@ describe("what each view shows for each kind of run", () => {
 
   test("the simulated identity mismatch shows both identities in the view", async () => {
     await mount({ session: { source: "mock-persona", id: "demouser", name: "demouser", email: "demouser@example.com", expiresAt: new Date(Date.now() + 3600e3).toISOString() } });
-    click("door-demo-all-tools");
+    click("door-lab-banking-full");
     fireEvent.change(document.getElementById("pgc-scenario"), { target: { value: "identity-mismatch" } });
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     view("reel");
     const ids = tid("run-note-identities");
     expect(ids).toHaveTextContent(/Page login \(SIMULATED scenario\)/);
@@ -226,7 +226,7 @@ describe("what each view shows for each kind of run", () => {
 
   test("Gateway trace is the shared GatewayTrace with Mock decisions 'checked'", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     view("trace");
     const tr = within(tid("epanel-trace")).getByTestId("gateway-trace");
     expect(tr).toHaveTextContent("What Privilege did");
@@ -235,10 +235,10 @@ describe("what each view shows for each kind of run", () => {
 });
 
 describe("switching mode or resetting with the views on", () => {
-  const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "demo-all-tools", PGC_GW_KEY_DEMO_ALL_TOOLS: "test-only-key" };
+  const REAL_ENV = { MODE: "mock", PGC_GW_URL: "https://gateway.example/mcp", PGC_GW_APPS: "lab-banking-full", PGC_GW_KEY_LAB_BANKING_FULL: "test-only-key" };
   test("a Mock/Real switch remounts the row (N5) and starts the walk over; the new mode's views are empty", async () => {
     await mount({ env: REAL_ENV });
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     const reel = view("reel"); view("tokens");
     click(within(reel).getByTestId("step-next"));
     expect(tid("evidence-counter")).toHaveTextContent("Message 1 of 8");
@@ -250,7 +250,7 @@ describe("switching mode or resetting with the views on", () => {
   });
   test("Reset in the header clears the run and the walk: the row's counter reads No run yet", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     const seq = view("sequence");
     click(within(seq).getByTestId("step-next"));
     expect(tid("evidence-counter")).toHaveTextContent("Message 1 of");
@@ -264,7 +264,7 @@ describe("switching mode or resetting with the views on", () => {
 describe("token sequence", () => {
   test("Mock: labelled MOCK, decoded by the vendored pane (Header, Payload, Signature), 'first / same / changed' as words and an icon, spec chips, illustrative hops tagged", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     const panel = view("tokens");
     expect(within(panel).getByTestId("tokens-intro")).toHaveTextContent(/MOCK/);
     expect(within(panel).getByTestId("tokens-intro")).toHaveTextContent(/Decoding is not verifying/);
@@ -295,7 +295,7 @@ describe("token sequence", () => {
 
   test("nothing in the token view says a token is verified", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     const panel = view("tokens");
     click(within(panel).getByTestId("tokhop-3").querySelector("button"));
     expect(tid("epanel-tokens").textContent).not.toMatch(/signature (is )?(valid|verified)|✓ verified/i);
@@ -315,7 +315,7 @@ describe("hostile input stays inert, and views are props only", () => {
   test("a hostile string in the arguments reaches the step detail as text: no element, no handler", async () => {
     const hostile = '<img src=x onerror=alert(1)> and <script>window.__pwn=1</script>';
     await mount();
-    await runTool("demo-all-tools", "list_entitlements", { text: JSON.stringify({ user: hostile }) });
+    await runTool("lab-banking-full", "list_entitlements", { text: JSON.stringify({ user: hostile }) });
     const reel = view("reel");
     click(within(reel).getByTestId("step-next"));
     click(tid("frame-5"));
@@ -334,7 +334,7 @@ describe("hostile input stays inert, and views are props only", () => {
   test("a view body needs only its props: it renders in a bare tree with no provider", async () => {
     const { api, lab } = createTestApi();
     const a = lab.info().catalog.find((x) => x.name === "list_entitlements").args;
-    const run = await api("/api/call", { method: "POST", body: { door: "demo-all-tools", tool: "list_entitlements", arguments: a } });
+    const run = await api("/api/call", { method: "POST", body: { door: "lab-banking-full", tool: "list_entitlements", arguments: a } });
     for (const { Body, id } of PANELS) {
       const Wrap = () => { const s = useRunStepper(run.hops, run.verdict.id); return <Body run={run} stepper={s} live detailOn={false} onDetail={() => {}} />; };
       const { container, unmount } = render(<Wrap />);
@@ -356,7 +356,7 @@ describe("hostile input stays inert, and views are props only", () => {
 describe("the step detail dialog that follows the sequence (section 8f)", () => {
   test("it is a non-modal FloatingDialog, off until switched on from the Sequence view, it follows the walked message, and closing hides it", async () => {
     await mount();
-    await runTool("demo-all-tools", "list_entitlements");
+    await runTool("lab-banking-full", "list_entitlements");
     view("sequence");
     expect(screen.queryByTestId("panel-detail")).toBeNull();
     click(within(tid("epanel-sequence")).getByTestId("detail-toggle"));

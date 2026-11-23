@@ -1,7 +1,7 @@
 {
   "id": "S04",
   "title": "A write that waits for a person",
-  "door": "demo-all-tools",
+  "door": "lab-banking-full",
   "mockOnly": true,
   "goal": "{{castAgentId}} at {{castBrand}} wants to open {{castTicket}} through open_ticket, a tool that changes data.",
   "obstacle": "A permitted write is still a write. An organisation may want a person to approve it first.",
@@ -9,7 +9,7 @@
   "say": "The call is held, not refused and not run. This is a simulation: nobody has captured a real held call yet, so Real never claims one.",
   "run": {
     "action": "call",
-    "door": "demo-all-tools",
+    "door": "lab-banking-full",
     "tool": "open_ticket"
   },
   "expect": {
@@ -19,12 +19,12 @@
     {
       "n": 1,
       "title": "Run the write tool",
-      "tell": "On demo-all-tools, select open_ticket and run it. The verdict is Held and the card says the hold is simulated.",
+      "tell": "On lab-banking-full, select open_ticket and run it. The verdict is Held and the card says the hold is simulated.",
       "say": "Allowed to ask, waiting for {{castApprover}}.",
       "why": "The held-call body here is the lab's invention. A real held-call shape needs an owner capture.",
       "run": {
         "action": "call",
-        "door": "demo-all-tools",
+        "door": "lab-banking-full",
         "tool": "open_ticket"
       },
       "expect": {

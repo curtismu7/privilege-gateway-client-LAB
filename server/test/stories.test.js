@@ -18,9 +18,9 @@ test('three vertical packs define exactly the same cast tokens', () => {
 test('six stories cover the three doors, the held call, the upstream error and the identity mismatch', () => {
   assert.deepEqual(STORIES.map((s) => s.id), ['S01', 'S02', 'S03', 'S04', 'S05', 'S06']);
   const by = Object.fromEntries(STORIES.map((s) => [s.id, s]));
-  assert.equal(by.S01.door, 'demo-all-tools');
-  assert.equal(by.S02.door, 'demo-some-tools');
-  assert.equal(by.S03.door, 'demo-blocked');
+  assert.equal(by.S01.door, 'lab-banking-full');
+  assert.equal(by.S02.door, 'lab-banking-limited');
+  assert.equal(by.S03.door, 'lab-banking-blocked');
   assert.equal(by.S04.expect.verdict, 'held');
   assert.equal(by.S05.expect.verdict, 'upstream');
   assert.equal(by.S06.expect.mismatch, true);

@@ -10,9 +10,9 @@ A client for a PingOne Privilege MCP gateway. You pick one of three standing doo
 
 | Door | Behaviour (the plan) |
 |---|---|
-| `demo-all-tools` | 18 tools listed, all permitted |
-| `demo-some-tools` | 7 listed (read-only); the other 11 are not listed, as on the real gateway, and a call to one by name is refused with 403 |
-| `demo-blocked` | no policy: every caller is refused before any tool is listed |
+| `lab-banking-full` | 18 tools listed, all permitted |
+| `lab-banking-limited` | 7 listed (read-only); the other 11 are not listed, as on the real gateway, and a call to one by name is refused with 403 |
+| `lab-banking-blocked` | no policy: every caller is refused before any tool is listed |
 
 ## What is simulated
 

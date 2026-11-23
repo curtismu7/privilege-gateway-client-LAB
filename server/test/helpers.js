@@ -90,10 +90,10 @@ export async function startStubGateway({ keys = {}, echoKey = false, fail = 0, f
 }
 
 // Environment for a Real-configured lab pointed at a stub: one key per door, all test values.
-export const TEST_KEYS = { 'demo-all-tools': 'TESTONLY-all-tools-0001-abcdef', 'demo-some-tools': 'TESTONLY-some-tools-0002-abcdef', 'demo-blocked': 'TESTONLY-blocked-0003-abcdef' };
+export const TEST_KEYS = { 'lab-banking-full': 'TESTONLY-all-tools-0001-abcdef', 'lab-banking-limited': 'TESTONLY-some-tools-0002-abcdef', 'lab-banking-blocked': 'TESTONLY-blocked-0003-abcdef' };
 export const realEnv = (origin, extra = {}) => ({
-  PGC_GW_URL: origin, PGC_GW_APPS: 'demo-all-tools,demo-some-tools,demo-blocked',
-  PGC_GW_KEY_DEMO_ALL_TOOLS: TEST_KEYS['demo-all-tools'], PGC_GW_KEY_DEMO_SOME_TOOLS: TEST_KEYS['demo-some-tools'], PGC_GW_KEY_DEMO_BLOCKED: TEST_KEYS['demo-blocked'],
+  PGC_GW_URL: origin, PGC_GW_APPS: 'lab-banking-full,lab-banking-limited,lab-banking-blocked',
+  PGC_GW_KEY_LAB_BANKING_FULL: TEST_KEYS['lab-banking-full'], PGC_GW_KEY_LAB_BANKING_LIMITED: TEST_KEYS['lab-banking-limited'], PGC_GW_KEY_LAB_BANKING_BLOCKED: TEST_KEYS['lab-banking-blocked'],
   ...extra,
 });
 

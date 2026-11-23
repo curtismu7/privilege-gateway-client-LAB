@@ -17,7 +17,7 @@ test('GET /api/info (Mock, nothing configured): source mock, realAvailable false
     assert.equal(body.realAvailable, false);
     assert.match(body.realReason, /PGC_GW_URL.*PGC_GW_APPS.*PGC_GW_KEY_<NAME>.*\.env beside docker-compose\.yml/);
     assert.match(body.startNote, /Real is not configured, so this lab started in Mock/);
-    assert.deepEqual(body.doors.map((d) => d.id), ['demo-all-tools', 'demo-some-tools', 'demo-blocked']);
+    assert.deepEqual(body.doors.map((d) => d.id), ['lab-banking-full', 'lab-banking-limited', 'lab-banking-blocked']);
     assert.ok(body.doors.every((d) => d.keyed === true && d.description));
     assert.equal(body.catalog.length, 18);
     assert.deepEqual(body.catalog.map((t) => t.name), TOOLS.map((t) => t.name));
@@ -29,7 +29,7 @@ test('GET /api/info (Mock, nothing configured): source mock, realAvailable false
 });
 
 test('the wording for "Real is not configured" names this lab\'s own .env and never the shared settings file', async () => {
-  for (const env of [{}, { PGC_GW_URL: 'not a url' }, { PGC_GW_URL: 'http://gateway.example' }, { PGC_GW_URL: 'https://gateway.example' }, { PGC_GW_URL: 'https://gateway.example', PGC_GW_APPS: 'demo-all-tools' }, { PGC_GW_URL: 'https://gateway.example', PGC_GW_APPS: 'Bad Name!', PGC_GW_KEY_X: 'k' }]) {
+  for (const env of [{}, { PGC_GW_URL: 'not a url' }, { PGC_GW_URL: 'http://gateway.example' }, { PGC_GW_URL: 'https://gateway.example' }, { PGC_GW_URL: 'https://gateway.example', PGC_GW_APPS: 'lab-banking-full' }, { PGC_GW_URL: 'https://gateway.example', PGC_GW_APPS: 'Bad Name!', PGC_GW_KEY_X: 'k' }]) {
     const lab = await startLab({ env });
     try {
       const info = await (await fetch(`${lab.base}/api/info`)).json();
@@ -120,17 +120,17 @@ test('input is validated: unknown door, bad door and tool names, scenarios, argu
     };
     await expect('/api/discover', {}, 404, 'unknown_door');
     await expect('/api/discover', { door: 'demo-nothing' }, 404, 'unknown_door');
-    for (const door of ['../etc', 'DEMO-ALL-TOOLS', '__proto__', 'demo-all-tools/../x', ' demo-all-tools', 'a'.repeat(500), 7, null, ['demo-all-tools'], { x: 1 }]) await expect('/api/discover', { door }, 404, 'unknown_door');
-    await expect('/api/discover', { door: 'demo-all-tools', scenario: 'chaos' }, 400, 'bad_scenario');
-    await expect('/api/discover', { door: 'demo-all-tools', scenario: ['none'] }, 400, 'bad_scenario');
-    await expect('/api/call', { door: 'demo-all-tools' }, 400, 'bad_tool');
-    for (const tool of ['', 'a b', '<script>', '../x', 'a'.repeat(65), 7, {}, '\u0000x']) await expect('/api/call', { door: 'demo-all-tools', tool }, 400, 'bad_tool');
-    await expect('/api/call', { door: 'demo-all-tools', tool: 'who_has_role', arguments: [1] }, 400, 'bad_arguments');
-    await expect('/api/call', { door: 'demo-all-tools', tool: 'who_has_role', arguments: 'x' }, 400, 'bad_arguments');
+    for (const door of ['../etc', 'DEMO-ALL-TOOLS', '__proto__', 'lab-banking-full/../x', ' lab-banking-full', 'a'.repeat(500), 7, null, ['lab-banking-full'], { x: 1 }]) await expect('/api/discover', { door }, 404, 'unknown_door');
+    await expect('/api/discover', { door: 'lab-banking-full', scenario: 'chaos' }, 400, 'bad_scenario');
+    await expect('/api/discover', { door: 'lab-banking-full', scenario: ['none'] }, 400, 'bad_scenario');
+    await expect('/api/call', { door: 'lab-banking-full' }, 400, 'bad_tool');
+    for (const tool of ['', 'a b', '<script>', '../x', 'a'.repeat(65), 7, {}, '\u0000x']) await expect('/api/call', { door: 'lab-banking-full', tool }, 400, 'bad_tool');
+    await expect('/api/call', { door: 'lab-banking-full', tool: 'who_has_role', arguments: [1] }, 400, 'bad_arguments');
+    await expect('/api/call', { door: 'lab-banking-full', tool: 'who_has_role', arguments: 'x' }, 400, 'bad_arguments');
     let deep = { role: 'x' }; for (let i = 0; i < 12; i += 1) deep = { n: deep };
-    await expect('/api/call', { door: 'demo-all-tools', tool: 'who_has_role', arguments: deep }, 400, 'bad_arguments');
-    await expect('/api/call', { door: 'demo-all-tools', tool: 'who_has_role', arguments: { role: 'x'.repeat(9000) } }, 400, 'bad_arguments');
-    await expect('/api/call', { door: 'demo-all-tools', tool: 'who_has_role', arguments: { role: 'x'.repeat(20000) } }, 413, 'bad_request');
+    await expect('/api/call', { door: 'lab-banking-full', tool: 'who_has_role', arguments: deep }, 400, 'bad_arguments');
+    await expect('/api/call', { door: 'lab-banking-full', tool: 'who_has_role', arguments: { role: 'x'.repeat(9000) } }, 400, 'bad_arguments');
+    await expect('/api/call', { door: 'lab-banking-full', tool: 'who_has_role', arguments: { role: 'x'.repeat(20000) } }, 413, 'bad_request');
   } finally { await lab.close(); }
 });
 
@@ -138,7 +138,7 @@ test('a very deep JSON body is bounded and answers JSON, never a stack overflow 
   const lab = await startLab();
   try {
     const deep = `${'{"a":'.repeat(3000)}1${'}'.repeat(3000)}`;
-    const r = await postJson(lab.base, '/api/call', `{"door":"demo-all-tools","tool":"who_has_role","arguments":${deep}}`);
+    const r = await postJson(lab.base, '/api/call', `{"door":"lab-banking-full","tool":"who_has_role","arguments":${deep}}`);
     assert.ok([400, 413].includes(r.status), String(r.status));
     assert.match(r.headers.get('content-type'), /json/);
     assert.ok((await r.json()).error);
@@ -149,7 +149,7 @@ test('a hostile argument value, tool description and door string stay data: the 
   const lab = await startLab();
   try {
     const evil = '<img src=x onerror=alert(1)>"\'`${7*7}‮\u0000';
-    const r = await (await postJson(lab.base, '/api/call', { door: 'demo-all-tools', tool: 'who_has_role', arguments: { role: evil } })).json();
+    const r = await (await postJson(lab.base, '/api/call', { door: 'lab-banking-full', tool: 'who_has_role', arguments: { role: evil } })).json();
     assert.equal(r.verdict.id, 'allowed');
     assert.equal(r.hops[0].request.body.arguments.role, evil, 'kept as a string for the UI to render inert');
     const res = await fetch(`${lab.base}/api/info`);
@@ -165,7 +165,7 @@ test('Host check and same-origin writes cover the new routes', async () => {
     assert.equal(bad.status, 403);
     assert.equal(JSON.parse(bad.body).error, 'bad_host');
     for (const path of ['/api/mode', '/api/discover', '/api/call', '/api/reset']) {
-      const cross = await postJson(lab.base, path, { source: 'real', door: 'demo-all-tools' }, { origin: 'https://attacker.example' });
+      const cross = await postJson(lab.base, path, { source: 'real', door: 'lab-banking-full' }, { origin: 'https://attacker.example' });
       assert.equal(cross.status, 403, path);
       assert.equal((await cross.json()).error, 'cross_origin');
       const site = await postJson(lab.base, path, {}, { 'sec-fetch-site': 'cross-site' });
@@ -200,6 +200,6 @@ test('health reports the new doctor checks and stays demo-health/1', async () =>
     assert.equal(checks.find((c) => c.id === 'netguard').level, 'pass');
     assert.equal(checks.find((c) => c.id === 'mock-gateway').level, 'pass');
     assert.equal(checks.find((c) => c.id === 'real').level, 'info');
-    assert.doesNotMatch(JSON.stringify(runChecks({ PGC_GW_URL: 'https://gateway.example', PGC_GW_APPS: 'demo-all-tools', PGC_GW_KEY_DEMO_ALL_TOOLS: 'SECRETVALUE1234' })), /SECRETVALUE1234|gateway\.example/);
+    assert.doesNotMatch(JSON.stringify(runChecks({ PGC_GW_URL: 'https://gateway.example', PGC_GW_APPS: 'lab-banking-full', PGC_GW_KEY_LAB_BANKING_FULL: 'SECRETVALUE1234' })), /SECRETVALUE1234|gateway\.example/);
   } finally { await lab.close(); }
 });

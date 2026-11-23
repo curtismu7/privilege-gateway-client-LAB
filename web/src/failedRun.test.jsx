@@ -43,19 +43,19 @@ describe("a failed run clears the previous one (hook)", () => {
   test("a stale answer for an old epoch does not clear the run of the new door", async () => {
     let release;
     const gate = new Promise((r) => { release = r; });
-    const t = createTestApi({ hooks: { "/api/discover": async (b) => { if (b.door === "demo-all-tools") { await gate; down()(); } } } });
+    const t = createTestApi({ hooks: { "/api/discover": async (b) => { if (b.door === "lab-banking-full") { await gate; down()(); } } } });
     const h = renderHook(() => useLab({ api: t.api }));
     await waitFor(() => expect(h.result.current.boot).toBe("ready"));
     let pending;
     act(() => { pending = h.result.current.discover(); });
     await waitFor(() => expect(h.result.current.busy).not.toBeNull());
-    act(() => h.result.current.chooseDoor("demo-some-tools"));
+    act(() => h.result.current.chooseDoor("lab-banking-limited"));
     await act(async () => { await h.result.current.discover(); });
-    expect(h.result.current.lastRun.door).toBe("demo-some-tools");
+    expect(h.result.current.lastRun.door).toBe("lab-banking-limited");
     release();
     await act(async () => { await pending; });
     expect(h.result.current.failure).toBeNull();
-    expect(h.result.current.lastRun.door).toBe("demo-some-tools");
+    expect(h.result.current.lastRun.door).toBe("lab-banking-limited");
   });
 });
 

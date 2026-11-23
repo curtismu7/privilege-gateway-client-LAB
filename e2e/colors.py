@@ -106,13 +106,13 @@ def go(page, door, tool=None, scenario=None):
 
 
 STATES = [
-    ("allowed", dict(door="demo-all-tools", tool="list_entitlements")),
-    ("refused-tool", dict(door="demo-some-tools", tool="sensitive_payroll_details")),
-    ("no-key", dict(door="demo-all-tools", tool="list_entitlements", scenario="no-key")),
-    ("bad-key", dict(door="demo-all-tools", tool="list_entitlements", scenario="bad-key")),
-    ("held", dict(door="demo-all-tools", tool="open_ticket")),
-    ("upstream-mock", dict(door="demo-all-tools", tool="list_entitlements", scenario="upstream-error")),
-    ("blocked-door", dict(door="demo-blocked")),
+    ("allowed", dict(door="lab-banking-full", tool="list_entitlements")),
+    ("refused-tool", dict(door="lab-banking-limited", tool="sensitive_payroll_details")),
+    ("no-key", dict(door="lab-banking-full", tool="list_entitlements", scenario="no-key")),
+    ("bad-key", dict(door="lab-banking-full", tool="list_entitlements", scenario="bad-key")),
+    ("held", dict(door="lab-banking-full", tool="open_ticket")),
+    ("upstream-mock", dict(door="lab-banking-full", tool="list_entitlements", scenario="upstream-error")),
+    ("blocked-door", dict(door="lab-banking-blocked")),
 ]
 
 

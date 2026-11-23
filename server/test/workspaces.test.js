@@ -9,7 +9,7 @@ import { startLab, startStubGateway, realEnv, TEST_KEYS, postJson } from './help
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pgc-ws-'));
 const ws = (base, id) => ({ 'x-workspace': id, origin: base });
 const call = (base, id, body) => postJson(base, '/api/call', body, ws(base, id));
-const SOME = { door: 'demo-some-tools', tool: 'get_investment_balance', arguments: { account_id: 'inv_5520' } };
+const SOME = { door: 'lab-banking-limited', tool: 'get_investment_balance', arguments: { account_id: 'inv_5520' } };
 
 test('workspace ids: the default, a valid id, and every malformed one is refused (never silently the default)', () => {
   assert.equal(workspaceFrom({ headers: {} }), DEFAULT_WORKSPACE);
@@ -130,7 +130,7 @@ test('with PGC_DATA_DIR each workspace has its own directory, the sink file hold
   const stub = await startStubGateway({ keys: TEST_KEYS });
   const lab = await startLab({ env: { ...realEnv(stub.origin, { MODE: 'real' }), PGC_DATA_DIR: dir } });
   try {
-    const r = await call(lab.base, 'team-a', { door: 'demo-all-tools', tool: 'list_entitlements', arguments: { user: 'aidemo' } });
+    const r = await call(lab.base, 'team-a', { door: 'lab-banking-full', tool: 'list_entitlements', arguments: { user: 'aidemo' } });
     assert.equal(r.status, 200);
     const fileA = path.join(dir, 'team-a', 'trace.jsonl');
     assert.ok(fs.existsSync(fileA));
