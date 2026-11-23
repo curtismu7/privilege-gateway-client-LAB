@@ -24,11 +24,12 @@ import { useTheme } from "./useTheme.js";
 import { cardFor, runLook } from "./verdictView.js";
 
 const TALK_KEY = "pgc.panel.talk";
+// Agent chat is first and the tab the lab opens on (owner 2026-11-23): the demo starts by talking to the agent.
 const TABS = [
+  { id: "chat", label: "Agent chat" },
   { id: "tools", label: "Tools" },
   { id: "args", label: "Arguments and response" },
   { id: "evidence", label: "Evidence" },
-  { id: "chat", label: "Agent chat" },
 ];
 
 // Tabs with the WAI-ARIA keyboard model: one tab stop, arrows and Home/End move between tabs.
@@ -91,7 +92,7 @@ export default function App() {
   const lab = useLab();
   const content = useContent();
   const { theme, setTheme, fontSize, setFontSize } = useTheme();
-  const [tab, setTab] = useState("tools");
+  const [tab, setTab] = useState("chat");
   const [railOpen, setRailOpen] = useState(false);
   const [railW, setRailW] = useState(() => {
     const saved = typeof window !== "undefined" && window.localStorage.getItem("pgc.railW");
@@ -209,7 +210,7 @@ export default function App() {
     setTalkOpen(false); setTalkSeen(false); setTalkAt(null);
     setPresent(urlPresenter || content.presenter);
     setPanelGen((g) => g + 1);
-    setTab("tools");
+    setTab("chat");
   };
 
   // The verdict word takes focus when a run finishes (not on first load): a counter changes once per finished run.
@@ -220,7 +221,7 @@ export default function App() {
   const source = lab.info?.source ?? "mock";
   const modeProps = lab.info ? {
     value: lab.info.source,
-    onChange: async (v) => { const ok = await lab.setMode(v); setTab("tools"); if (ok) setDockGen((g) => g + 1); },
+    onChange: async (v) => { const ok = await lab.setMode(v); setTab("chat"); if (ok) setDockGen((g) => g + 1); },
     realAvailable: lab.info.realAvailable,
     realHint: lab.info.realReason ?? "Real is not configured. Add this lab's own .env settings and restart; Mock keeps working.",
   } : undefined;
@@ -303,7 +304,7 @@ export default function App() {
             <Panel id="tools" tab={tab}><ToolsTab lab={lab} onPick={pick} filterRef={filterRef} onDiscover={() => lab.discover()} onRunByName={(n) => lab.callTool(n, {})} /></Panel>
             <Panel id="args" tab={tab}><ArgsTab lab={lab} tool={selected} onBack={() => setTab("tools")} /></Panel>
             <Panel id="evidence" tab={tab}><EvidenceTab lab={lab} /></Panel>
-            <Panel id="chat" tab={tab}><ChatTab key={`${source}:${lab.door}`} lab={lab} /></Panel>
+            <Panel id="chat" tab={tab}><ChatTab key={`${source}:${lab.door}`} lab={lab} stepper={stepper} /></Panel>
           </Tabs>
         </div>
       </div>

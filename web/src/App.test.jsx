@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import App from "./App.jsx";
 import { createTestApi, fetchFrom } from "./testLab.js";
 import { validateArgs } from "./ArgsTab.jsx";
-import { historyFor, HISTORY_BYTES, HISTORY_MESSAGES, MESSAGE_CHARS, plainReply } from "./ChatTab.jsx";
+import { historyFor, HISTORY_BYTES, HISTORY_MESSAGES, MESSAGE_CHARS, plainReply, MOCK_PROMPTS, REAL_PROMPTS } from "./ChatTab.jsx";
 import { createLab } from "../../server/src/lab.js";
 import hopCatalog from "../../server/src/vendor/hop-catalog.json";
 
@@ -470,3 +470,61 @@ describe("Real agent chat", () => {
     expect(tid("args-note")).toHaveTextContent("Required: resource");
   });
 });
+
+describe("Agent chat first, prompts and inline evidence (owner 2026-11-23)", () => {
+  test("Agent chat is the first tab and the one the lab opens on", async () => {
+    await mount();
+    const tabs = within(screen.getByRole("tablist", { name: "Details" })).getAllByRole("tab");
+    expect(tabs[0]).toHaveAttribute("data-testid", "tab-chat");
+    expect(tid("tab-chat")).toHaveAttribute("aria-selected", "true");
+    expect(tid("chat-panel")).toBeInTheDocument();
+  });
+
+  test("the prompt dropdown fills the message without sending it; Mock and Real have their own lists", async () => {
+    await mount({ env: AGENT_ENV, hooks: { "/api/agent": () => { throw new Error("must not send"); } } });
+    const options = within(tid("chat-prompts")).getAllByRole("option").map((o) => o.value).filter(Boolean);
+    expect(options).toEqual([...MOCK_PROMPTS]);
+    fireEvent.change(tid("chat-prompts"), { target: { value: "list my tools" } });
+    expect(tid("chat-input")).toHaveValue("list my tools");
+    expect(tid("chat-prompts")).toHaveValue("");
+    expect(screen.queryAllByTestId("msg-you")).toHaveLength(0);
+    await toReal();
+    click("tab-chat");
+    expect(within(tid("chat-prompts")).getAllByRole("option").map((o) => o.value).filter(Boolean)).toEqual([...REAL_PROMPTS]);
+  });
+
+  test("Mock: a reply's Evidence opens the verdict and the reel of that run inline; a frame walks the page's one walkthrough", async () => {
+    await mount();
+    fireEvent.change(tid("chat-input"), { target: { value: "list my tools" } });
+    click("chat-send");
+    await waitWord("Allowed");
+    click(await screen.findByTestId("chat-evidence-toggle"));
+    const ev = tid("chat-evidence");
+    expect(ev).toHaveTextContent("Allowed");
+    expect(ev).toHaveTextContent("Discovery (tools/list)");
+    const frames = within(ev).getAllByRole("button").filter((b) => b.className.includes("rl-f"));
+    expect(frames.length).toBeGreaterThan(1);
+    click(frames[1]);
+    await waitFor(() => expect(within(tid("chat-evidence")).getAllByRole("button").filter((b) => b.className.includes("rl-f"))[1]).toHaveAttribute("aria-current", "step"));
+  });
+
+  test("Real: a frame of an earlier run loads that run first (the page's one walkthrough follows it)", async () => {
+    const { disc, call, blocked } = await realShapedRuns();
+    const reply = { source: "real", simulated: false, model: "claude-sonnet-5-5", by: "model", stopped: "done", reply: "Three calls made for the walkthrough test.", steps: [{ kind: "discover", run: disc }, { kind: "call", tool: "who_has_role", args: {}, run: call }, { kind: "call", tool: "sensitive_holdings", args: {}, run: blocked }] };
+    await mount({ env: AGENT_ENV, hooks: { "/api/agent": () => reply } });
+    await toReal();
+    click("tab-chat");
+    fireEvent.change(tid("chat-input"), { target: { value: "go" } });
+    click("chat-send");
+    await screen.findByText("Three calls made for the walkthrough test.");
+    await waitWord(blocked.verdict.word);
+    click(screen.getAllByTestId("chat-evidence-toggle")[1]); // the who_has_role call, not the page's current run
+    const ev = tid("chat-evidence");
+    expect(ev).toHaveTextContent(call.verdict.word);
+    expect(ev).toHaveTextContent(/load this run into Evidence/);
+    click(within(ev).getAllByRole("button").filter((b) => b.className.includes("rl-f"))[0]);
+    await waitWord(call.verdict.word);
+    await waitFor(() => expect(tid("chat-evidence")).toHaveTextContent(/This run is in Evidence/));
+  });
+});
+

@@ -372,7 +372,8 @@ describe("Reset", () => {
     expect(window.location.search).toBe("");
     expect(q("talk-track-dialog")).toBeNull();
     expect(tid("evidence-counter")).toHaveTextContent("No run yet");
-    expect(document.documentElement.dataset.presenter).toBe("0");
+    // "Ready" shows as soon as the lab's runs are cleared; the page restores presenter mode after the reset call returns, so wait for it.
+    await waitFor(() => expect(document.documentElement.dataset.presenter).toBe("0"));
     expect(t.calls.some((c) => c.path === "/api/reset" && c.method === "POST")).toBe(true);
   });
   test("Reset keeps the mode and a lab started in presenter mode stays in it", async () => {
