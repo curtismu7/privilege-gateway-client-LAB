@@ -19,6 +19,7 @@ describe("UI pattern checker (P2, P9)", () => {
     expect(src("ToolsTab.jsx")).not.toMatch(/<h3[ >]/);
     const t = createTestApi(); vi.stubGlobal("fetch", fetchFrom(t.api));
     render(<App />);
+    fireEvent.click(await screen.findByTestId("tab-tools")); // Agent chat is the opening tab since 2026-11-23
     const empty = await screen.findByTestId("tools-empty");
     const title = empty.querySelector('[role="heading"]');
     expect(title).not.toBeNull();
