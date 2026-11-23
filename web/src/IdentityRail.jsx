@@ -95,7 +95,7 @@ export default function IdentityRail({ lab, onSignIn, open, onToggle }) {
             ) : (
               <>
                 <div className="pgc-id__name">Not signed in</div>
-                <div className="pgc-id__mail" id="pgc-signin-why" data-testid="signin-why">{canSignIn ? "No page login yet. The gateway calls on this page do not need one." : signInWhy}</div>
+                <div className="pgc-id__mail" id="pgc-signin-why" data-testid="signin-why">{canSignIn ? (info.hosted && !mock ? "No page login yet. On this hosted lab, sign in to run the Real gateway calls and the agent." : "No page login yet. The gateway calls on this page do not need one.") : signInWhy}</div>
                 <button type="button" onClick={onSignIn} disabled={!canSignIn} aria-describedby="pgc-signin-why" title={canSignIn ? undefined : signInWhy} data-testid="rail-sign-in">Sign in</button>
               </>
             )}

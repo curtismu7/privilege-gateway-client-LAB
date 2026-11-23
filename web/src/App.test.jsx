@@ -477,6 +477,21 @@ describe("Real agent chat", () => {
     expect(tid("hosted-signin")).toHaveTextContent(/Sign in to run the Real lab/);
   });
 
+  test("hosted: the rail says a sign-in is needed for Real calls; the local lab keeps 'do not need one'", async () => {
+    const authConfig = { workspace: "default", source: "real", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "pi.flow", configured: true, problems: [] } };
+    await mount({ env: AGENT_ENV, authConfig, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: false } }) } });
+    await toReal();
+    expect(tid("signin-why")).toHaveTextContent(/On this hosted lab, sign in to run the Real gateway calls and the agent/);
+    expect(tid("signin-why")).not.toHaveTextContent(/do not need one/);
+  });
+
+  test("not hosted: the rail keeps saying the gateway calls do not need a page login", async () => {
+    const authConfig = { workspace: "default", source: "real", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "pi.flow", configured: true, problems: [] } };
+    await mount({ env: AGENT_ENV, authConfig });
+    await toReal();
+    expect(tid("signin-why")).toHaveTextContent(/do not need one/);
+  });
+
   test("hosted: a visitor with a Real page login sees no sign-in note in Real", async () => {
     const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
     await mount({ env: AGENT_ENV, session: me, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: true } }) } });
