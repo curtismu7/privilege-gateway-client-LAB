@@ -93,6 +93,29 @@ export default function App() {
   const { theme, setTheme, fontSize, setFontSize } = useTheme();
   const [tab, setTab] = useState("tools");
   const [railOpen, setRailOpen] = useState(false);
+  const [railW, setRailW] = useState(() => {
+    const saved = typeof window !== "undefined" && window.localStorage.getItem("pgc.railW");
+    return saved ? Number(saved) : null;
+  });
+  const railDragging = useRef(false);
+  const layoutRef = useRef(null);
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!railDragging.current || !layoutRef.current) return;
+      e.preventDefault();
+      const rect = layoutRef.current.getBoundingClientRect();
+      const gap = 16;
+      const w = Math.min(40 * 16, Math.max(16 * 16, e.clientX - rect.left - gap / 2));
+      setRailW(w);
+    };
+    const onUp = () => { railDragging.current = false; document.body.style.cursor = ""; document.body.style.userSelect = ""; };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); };
+  }, []);
+  useEffect(() => {
+    if (railW != null) window.localStorage.setItem("pgc.railW", String(railW));
+  }, [railW]);
   const [signinOpen, setSigninOpen] = useState(false);
   const [focusSignal, setFocusSignal] = useState(0);
   const filterRef = useRef(null);
@@ -262,8 +285,16 @@ export default function App() {
       {lab.modeError && (
         <p className="pgc-note pgc-note--hold" role="alert" data-testid="mode-error">{lab.modeError.message}</p>
       )}
-      <div className="pgc-layout">
+      <div className="pgc-layout" ref={layoutRef} style={railW != null ? { "--rail-w": `${railW}px` } : undefined}>
         <IdentityRail lab={lab} onSignIn={() => setSigninOpen(true)} open={railOpen} onToggle={() => setRailOpen((o) => !o)} />
+        <div
+          className="pgc-rail-handle"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize left panel"
+          data-dragging={railDragging.current ? "1" : "0"}
+          onPointerDown={(e) => { e.preventDefault(); railDragging.current = true; document.body.style.cursor = "col-resize"; document.body.style.userSelect = "none"; }}
+        />
         <div className="pgc-stage">
           <VerdictCard card={card} onAction={onAction} focusSignal={focusSignal} />
           <StoryPanel stories={content.stories} info={lab.info} lastRun={lab.lastRun} activeId={activeStory} onSelect={selectStory} onRun={runStory} busy={lab.busy}
