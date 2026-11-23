@@ -1,6 +1,6 @@
 // One Express app: loopback Host check, same-origin writes, bounded JSON bodies, /api (health, shelf, info, mode, discover,
 // call, runs, reset), and the built web app. Every failure on /api is JSON, never an HTML error page (rule 23).
-import { randomBytes } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +38,11 @@ export const CSP = [
   "object-src 'none'", "base-uri 'none'", "form-action 'self'", "frame-ancestors 'none'",
 ].join('; ');
 
+// Constant-time text compare (the sign-in state).
+const sameText = (a, b) => { const x = Buffer.from(String(a)); const y = Buffer.from(String(b)); return x.length === y.length && timingSafeEqual(x, y); };
+// The hosted workspace id from the browser's own cookie, or null.
+const workspaceCookie = (req) => /(?:^|;\s*)pgc_ws=(v-[0-9a-f]{16})(?:;|$)/.exec(String(req.headers.cookie || ''))?.[1] ?? null;
+
 export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = globalThis.fetch, modelFetch = globalThis.fetch, customer = loadCustomerConfig({ env }), lab = createLab({ env, version, modelFetch }), health = createHealth({ demoId: APP_ID, demoName: APP_NAME, version, runChecks: () => runChecks(env), allPassed }) } = {}) {
   const app = express();
   app.disable('x-powered-by');
@@ -52,8 +57,7 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
   api.use((req, res, next) => {
     if (settings.hosted) {
       // Hosted: the workspace is the browser's own cookie, never a header or a shared name (X-Workspace and ?workspace= are ignored).
-      const m = /(?:^|;\s*)pgc_ws=(v-[0-9a-f]{16})(?:;|$)/.exec(String(req.headers.cookie || ''));
-      let id = m ? m[1] : null;
+      let id = workspaceCookie(req);
       if (!id) {
         id = `v-${randomBytes(8).toString('hex')}`;
         res.append('set-cookie', `pgc_ws=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 3600}; Secure`);
@@ -65,7 +69,8 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
     next();
   });
   const sessions = createSessions({ secret: settings.sessionSecret, ttlMs: settings.sessionTtlMs, secure: settings.hosted });
-  const loginRuns = createLoginRunStore(); // workspace -> the pi.flow run waiting for credentials; capped and expired (auth/loginRuns.js)
+  // workspace -> the pi.flow run waiting for credentials; capped and expired (auth/loginRuns.js). Hosted: full means refuse, never evict.
+  const loginRuns = createLoginRunStore({ whenFull: settings.hosted ? 'refuse' : 'evict' });
   const auth = { settings, sessions, loginRuns, fetchImpl };
   // Who is signed in to this workspace, if anyone. A Mock persona counts only in Mock and a Real page login only in Real.
   api.use((req, _res, next) => {
@@ -87,21 +92,25 @@ export function createApp({ webDist = WEB_DIST, env = process.env, fetchImpl = g
   api.use((_req, res) => res.status(404).json({ error: 'not_found', message: 'no such API route' }));
   app.use('/api', api);
 
-  // Hosted: the redirect sign-in comes back here (the redirect URI is https://<host>/callback). One use per state; any failure goes back to
-  // the page with ?signin_error=<code> so the page can say why, and never shows a code, a token or the state.
+  // Hosted: the redirect sign-in comes back here (the redirect URI is https://<host>/callback). The run is looked up by the browser's own
+  // workspace cookie and must carry the same state, so only the browser that started a sign-in can finish it (login CSRF); a wrong browser
+  // or state does not use the run up. Any failure goes back to the page with ?signin_error=<code> so the page can say why, and never shows
+  // a code, a token or the state.
   if (settings.hosted) {
     app.get('/callback', async (req, res) => {
       noStore(res);
-      const state = typeof req.query.state === 'string' ? req.query.state : '';
-      const entry = state ? authFlow.redirectRuns.get(state) : undefined;
-      if (state) authFlow.redirectRuns.delete(state);
       const back = (ret, err) => res.redirect(302, err ? `${ret}${ret.includes('?') ? '&' : '?'}signin_error=${encodeURIComponent(err)}` : ret);
-      // "./" (not "/") when the state is unknown: the browser resolves it beside /callback, so behind a path proxy it stays on the lab.
-      const ret = entry?.ret ?? './';
+      const state = typeof req.query.state === 'string' ? req.query.state : '';
+      const ws = workspaceCookie(req);
+      const entry = ws ? authFlow.redirectRuns.get(ws) : undefined;
+      // "./" (not "/") when there is no run: the browser resolves it beside /callback, so behind a path proxy it stays on the lab.
+      if (!entry || !sameText(entry.run.state, state)) return back('./', 'no_run');
+      authFlow.redirectRuns.delete(ws);
+      const ret = entry.ret;
       try {
-        const out = await authFlow.loginApi().redirectFinish(entry?.run, { code: req.query.code, state, error: req.query.error });
+        const out = await authFlow.loginApi().redirectFinish(entry.run, { code: req.query.code, state, error: req.query.error });
         const maxAge = Math.floor(authFlow.settings.sessionTtlMs / 1000);
-        res.append('set-cookie', authFlow.sessions.cookie(authFlow.sessions.issueClaims(out.claims, entry.workspace), maxAge, entry.workspace));
+        res.append('set-cookie', authFlow.sessions.cookie(authFlow.sessions.issueClaims(out.claims, ws), maxAge, ws));
         back(ret, null);
       } catch (e) {
         back(ret, e instanceof LoginError ? e.code : 'signin_failed');
@@ -183,10 +192,17 @@ function mountLabRoutes(api, lab, { settings, customer, auth }) {
       const day = new Date().toISOString().slice(0, 10);
       for (const k of agentUse.keys()) if (!k.startsWith(`${day}|`)) agentUse.delete(k);
       const k = `${day}|${req.me.sub}`;
-      if ((agentUse.get(k) ?? 0) >= settings.agentDailyLimit) return res.status(429).json({ error: 'agent_daily_limit', message: `The agent chat allows ${settings.agentDailyLimit} messages per person per day on this hosted lab. The Tools tab still works.` });
-      const out = await lab.agentTurn({ door: b.door, messages: b.messages }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null });
-      if (out.modelCalls > 0) agentUse.set(k, (agentUse.get(k) ?? 0) + 1); // a turn that never reached the model does not count
-      return res.json(out);
+      const used = agentUse.get(k) ?? 0;
+      if (used >= settings.agentDailyLimit) return res.status(429).json({ error: 'agent_daily_limit', message: `The agent chat allows ${settings.agentDailyLimit} messages per person per day on this hosted lab. The Tools tab still works.` });
+      // The slot is taken before the turn runs, so messages sent at the same time cannot all pass the check. It is given back only when
+      // the turn never tried the model (a refused door, no tools, bad input); a model call that failed or threw still counts.
+      agentUse.set(k, used + 1);
+      const usage = { modelAttempts: 0 };
+      try {
+        return res.json(await lab.agentTurn({ door: b.door, messages: b.messages }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null, usage }));
+      } finally {
+        if (usage.modelAttempts === 0) agentUse.set(k, Math.max(0, (agentUse.get(k) ?? 1) - 1));
+      }
     }
     res.json(await lab.agentTurn({ door: b.door, messages: b.messages }, { traceparent: req.headers.traceparent, workspace: req.workspaceId, pageLogin: req.pageLogin ?? null }));
   });
@@ -253,8 +269,9 @@ function mountAuthRoutes(api, lab, auth) {
     return true;
   };
   // Hosted: the redirect sign-in (owner 2026-11-23). The browser goes to PingOne and back to /callback, so an existing PingOne session signs the
-  // person in with no prompt. The run (state, nonce, PKCE verifier) stays here, keyed by its state, single use, capped and expired.
-  const redirectRuns = createLoginRunStore();
+  // person in with no prompt. The run (state, nonce, PKCE verifier) stays here, one per browser workspace (a new start replaces it), single
+  // use, expired after 5 minutes, and capped: when full a new start is refused, so nobody can push out another browser's sign-in.
+  const redirectRuns = createLoginRunStore({ max: 200, ttlMs: 5 * 60 * 1000, whenFull: 'refuse' });
   const RETURN_PATH = /^\/(?!\/)[A-Za-z0-9/_.-]{0,200}$/;
   if (settings.hosted) {
     api.get('/auth/redirect/start', (req, res) => {
@@ -262,7 +279,8 @@ function mountAuthRoutes(api, lab, auth) {
       if (!liveOk(res)) return;
       const ret = typeof req.query.return === 'string' && RETURN_PATH.test(req.query.return) ? req.query.return : './';
       const { url, run } = loginApi().redirectStart();
-      redirectRuns.set(run.state, { run, workspace: req.workspaceId, ret });
+      // A start is a page navigation: a refused one goes back to the page with the reason, like every other sign-in failure.
+      if (!redirectRuns.set(req.workspaceId, { run, ret })) return res.redirect(302, `${ret}${ret.includes('?') ? '&' : '?'}signin_error=signin_busy`);
       res.redirect(302, url);
     });
   }
@@ -271,7 +289,7 @@ function mountAuthRoutes(api, lab, auth) {
     noStore(res);
     if (!liveOk(res)) return;
     const { run, view } = await loginApi().start();
-    loginRuns.set(req.workspaceId, run);
+    if (!loginRuns.set(req.workspaceId, run)) return res.status(429).json({ error: 'signin_busy', message: 'Too many sign-ins are in progress on this lab. Try again in a few minutes.' });
     res.json({ ok: true, ...view });
   });
   api.post('/auth/live/credentials', async (req, res) => {

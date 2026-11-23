@@ -516,6 +516,12 @@ describe("Real agent chat", () => {
     expect(window.location.search).toBe("");
   });
 
+  test("hosted: a sign-in refused because too many are in progress says so in words", async () => {
+    window.history.replaceState(null, "", "/?signin_error=signin_busy");
+    await mount({ env: AGENT_ENV });
+    expect(tid("signin-error")).toHaveTextContent(/Too many sign-ins are in progress/);
+  });
+
   test("hosted: a visitor with a Real page login sees no sign-in note in Real", async () => {
     const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
     await mount({ env: AGENT_ENV, session: me, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: true } }) } });

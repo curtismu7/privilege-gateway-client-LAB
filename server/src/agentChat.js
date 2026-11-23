@@ -108,7 +108,7 @@ export function createAgentChat({ env, lab, guard, fetchImpl = globalThis.fetch 
     if (!config.configured) throw new AgentError(409, 'agent_not_configured', config.reason);
     const convo = checkHistory(messages);
     const steps = [];
-    let modelCalls = 0; // model requests that got an answer this turn (the hosted daily cap counts a turn only when this is above 0)
+    let modelCalls = 0; // model requests that got an answer this turn (the hosted daily cap counts attempts, through opts.usage)
     const out = (o) => ({ source: 'real', simulated: false, steps, modelCalls, ...o });
 
     // 1. Discover: what the gateway lists on this door for this key. A refused or failed discovery means no tools, and no model call.
@@ -135,6 +135,8 @@ export function createAgentChat({ env, lab, guard, fetchImpl = globalThis.fetch 
         return out({ model, by: 'lab', stopped: 'turn-timeout', reply: `I stopped: this message took longer than ${AGENT_LIMITS.turnMs / 1000} seconds.` });
       }
       let resp;
+      // Counted before the request: a model call that fails or times out may still be billed, so the hosted daily cap counts attempts.
+      if (opts.usage) opts.usage.modelAttempts += 1;
       try {
         const params = { model: config.model, max_tokens: AGENT_LIMITS.maxTokens, system: SYSTEM, tools, messages: convo };
         // Through the LLM gateway: the plain Messages request (the gateway's model may not take effort, and the fallback beta is the

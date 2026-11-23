@@ -142,7 +142,7 @@ test('an LLM gateway URL that is not https, or has no key, leaves the agent unco
   assert.ok(!JSON.stringify(ok).includes(LLM_KEY));
 });
 
-test('hosted: at the workspace cap the least recently used browser is forgotten, not a 429 for the next visitor', async () => {
+test('hosted: at the workspace cap the next visitor is admitted (an idle slot is freed), not a 429', async () => {
   await start({ PGC_MAX_WORKSPACES: '2' });
   try {
     const [a, b, c] = [browser(), browser(), browser()];
@@ -213,6 +213,11 @@ test('the pending sign-in store is capped (oldest out) and expires', async () =>
   assert.equal(s.get('b'), undefined, 'expired');
   s.set('d', 4);
   assert.equal(s.size, 1, 'expired runs are dropped on the next start');
+  // Hosted: full means refuse, never evict; a workspace that already has a run may still replace it.
+  const h = createLoginRunStore({ max: 2, ttlMs: 100, now: () => t, whenFull: 'refuse' });
+  assert.equal(h.set('a', 1), true); assert.equal(h.set('b', 2), true);
+  assert.equal(h.set('c', 3), false); assert.equal(h.get('a'), 1); assert.equal(h.get('c'), undefined);
+  assert.equal(h.set('a', 9), true); assert.equal(h.get('a'), 9);
 });
 
 // ---- The redirect sign-in (hosted, owner 2026-11-23) ------------------------------------------------------------------------
@@ -298,3 +303,90 @@ test('not hosted: no redirect sign-in route and the sign-in stays pi.flow', asyn
   } finally { await lab.close(); await gw.close(); lab = null; }
 });
 
+
+// ---- Review fixes (2026-11-23): the cap, the pending sign-ins and the workspaces must hold against a hostile or parallel caller ---------
+const okModel = (delayMs = 0, counter = { n: 0 }) => async () => {
+  counter.n += 1;
+  if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+  return new Response(JSON.stringify({ id: 'm', type: 'message', role: 'assistant', model: 'claude-sonnet-4-5', content: [{ type: 'text', text: 'ok' }], stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } }), { status: 200, headers: { 'content-type': 'application/json' } });
+};
+
+test('hosted: messages sent at the same time cannot go past the daily agent cap (the slot is taken before the turn runs)', async () => {
+  const seen = { n: 0 };
+  await start({ PGC_LLM_GATEWAY_URL: 'https://llm-gw.example', PGC_LLM_VIRTUAL_KEY: LLM_KEY, PGC_AGENT_DAILY_LIMIT: '2' }, okModel(60, seen));
+  try {
+    const b = browser(); await b.get('/api/info'); b.signIn('user-par');
+    const rs = await Promise.all(Array.from({ length: 6 }, () => b.post('/api/agent', { door: ALL, messages: [{ role: 'user', text: 'hi' }] })));
+    const codes = rs.map((r) => r.status).sort();
+    assert.deepEqual(codes, [200, 200, 429, 429, 429, 429]);
+    assert.equal(seen.n, 2, 'only the two allowed messages reached the model');
+  } finally { await stop(); }
+});
+
+test('hosted: a turn whose model call failed still counts (the gateway may have billed it); one that never tried does not', async () => {
+  const failing = async () => new Response(JSON.stringify({ type: 'error', error: { type: 'api_error', message: 'x' } }), { status: 500, headers: { 'content-type': 'application/json' } });
+  await start({ PGC_LLM_GATEWAY_URL: 'https://llm-gw.example', PGC_LLM_VIRTUAL_KEY: LLM_KEY, PGC_AGENT_DAILY_LIMIT: '1' }, failing);
+  try {
+    const b = browser(); await b.get('/api/info'); b.signIn('user-fail');
+    const r1 = await b.post('/api/agent', { door: ALL, messages: [{ role: 'user', text: 'hi' }] });
+    assert.equal(r1.status, 200); assert.equal((await r1.json()).stopped, 'model-error');
+    assert.equal((await b.post('/api/agent', { door: ALL, messages: [{ role: 'user', text: 'hi' }] })).status, 429);
+  } finally { await stop(); }
+});
+
+test('hosted: cookieless reads cannot push a signed-in browser\'s runs out; an empty workspace makes room first', async () => {
+  await start({ PGC_MAX_WORKSPACES: '2' });
+  try {
+    const a = browser(); await a.get('/api/info'); a.signIn('user-a');
+    assert.equal((await a.post('/api/discover', { door: ALL })).status, 200);
+    for (let i = 0; i < 5; i += 1) assert.equal((await fetch(`${lab.base}/api/runs`)).status, 200, 'an anonymous visitor is still admitted');
+    assert.equal((await (await a.get('/api/runs')).json()).runs.length, 1, 'a\'s run survives');
+    assert.equal(lab.lab.workspaces.ids().filter((id) => id !== 'default').length, 2);
+  } finally { await stop(); }
+});
+
+test('hosted redirect sign-in: one pending sign-in per browser; a flood of starts cannot cancel another browser\'s sign-in', async () => {
+  const p = pingOneStub();
+  const gw = await startStubGateway({ keys: TEST_KEYS });
+  lab = await startLab({ env: realEnv(gw.origin, { ...HOSTED, ...LOGIN }), fetchImpl: p.fetchImpl });
+  try {
+    const victim = browser();
+    const stateOf = (r) => new URL(r.headers.get('location')).searchParams.get('state');
+    // A second start in the same browser replaces its first: the old state no longer signs in.
+    const first = stateOf(await noFollow(victim, '/api/auth/redirect/start?return=/x/'));
+    const mine = stateOf(await noFollow(victim, '/api/auth/redirect/start?return=/x/'));
+    assert.match((await noFollow(victim, `/callback?code=c&state=${encodeURIComponent(first)}`)).headers.get('location'), /signin_error=no_run/);
+    // Someone floods the start route from fresh browsers. Past the cap they are refused; nobody else's pending sign-in is dropped.
+    // A start is a page navigation, so a refused one goes back to the page with the reason, like every other sign-in failure.
+    let refused = 0;
+    for (let i = 0; i < 260; i += 1) {
+      const r = await fetch(`${lab.base}/api/auth/redirect/start`, { redirect: 'manual' });
+      assert.equal(r.status, 302);
+      if (r.headers.get('location') === './?signin_error=signin_busy') refused += 1;
+      else assert.ok(r.headers.get('location').startsWith('https://auth.pingone.com/'), r.headers.get('location'));
+    }
+    assert.ok(refused > 0, 'the flood hits the cap');
+    const back = await noFollow(victim, `/callback?code=TESTONLY-code&state=${encodeURIComponent(mine)}`);
+    assert.equal(back.headers.get('location'), '/x/', 'the victim still signs in');
+    assert.equal((await (await victim.get('/api/session')).json()).me?.source, 'real-login');
+  } finally { await lab.close(); await gw.close(); lab = null; }
+});
+
+test('hosted redirect sign-in: the callback signs in only the browser that started it (login CSRF), and a wrong browser does not use up the run', async () => {
+  const p = pingOneStub();
+  const gw = await startStubGateway({ keys: TEST_KEYS });
+  lab = await startLab({ env: realEnv(gw.origin, { ...HOSTED, ...LOGIN }), fetchImpl: p.fetchImpl });
+  try {
+    const attacker = browser(); const victim = browser();
+    await victim.get('/api/info');
+    const st = new URL((await noFollow(attacker, '/api/auth/redirect/start?return=/x/')).headers.get('location')).searchParams.get('state');
+    // The victim's browser comes back with the attacker's state: refused, and nobody is signed in there.
+    assert.match((await noFollow(victim, `/callback?code=TESTONLY-code&state=${encodeURIComponent(st)}`)).headers.get('location'), /signin_error=no_run/);
+    assert.equal((await (await victim.get('/api/session')).json()).me, null);
+    // With no workspace cookie at all: refused too.
+    assert.match((await fetch(`${lab.base}/callback?code=TESTONLY-code&state=${encodeURIComponent(st)}`, { redirect: 'manual' })).headers.get('location'), /signin_error=no_run/);
+    assert.equal(p.calls.length, 0, 'no code was exchanged for the wrong browser');
+    // The browser that started it can still finish.
+    assert.equal((await noFollow(attacker, `/callback?code=TESTONLY-code&state=${encodeURIComponent(st)}`)).headers.get('location'), '/x/');
+  } finally { await lab.close(); await gw.close(); lab = null; }
+});

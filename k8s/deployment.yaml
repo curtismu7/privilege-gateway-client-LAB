@@ -1,5 +1,5 @@
 # The owner-run SE-hosted REAL instance of the Privilege Gateway Client Lab (spec docs/specs/2026-11-23-se-hosted-real.md). Same image as the
-# local lab. PGC_HOSTED=1: a Real page login (PingOne, pi.flow) before any Real call, one workspace per browser, Secure cookies and a daily agent
+# local lab. PGC_HOSTED=1: a Real page login (the PingOne redirect sign-in to https://<host>/callback) before any Real call, one workspace per browser, Secure cookies and a daily agent
 # cap per person. Every secret and tenant setting comes from the Secret privilege-gateway-client-real, which the owner creates with kubectl;
 # nothing here names a key, a tenant id or a client id. Placeholders (__IMAGE__, __SE_HOST__) are filled by k8s/deploy.sh.
 apiVersion: apps/v1
@@ -8,7 +8,7 @@ metadata:
   name: privilege-gateway-client
   labels: { app: privilege-gateway-client }
 spec:
-  replicas: 1   # sign-in sessions, pending pi.flow runs, workspaces and the daily agent counts are in memory: one pod
+  replicas: 1   # sign-in sessions, pending sign-ins, workspaces and the daily agent counts are in memory: one pod
   strategy: { type: Recreate }
   selector:
     matchLabels: { app: privilege-gateway-client }

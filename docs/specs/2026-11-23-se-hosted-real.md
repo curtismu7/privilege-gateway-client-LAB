@@ -17,7 +17,7 @@ The rollout model allows a hosted Real instance only as "a Ping-operated real in
 
 ## Acceptance criteria
 1. Not signed in, Real: Tools, story and chat calls answer 401 `signin_required`, and the page says to sign in. Test plus a browser check on the hosted URL.
-2. Signed in (pi.flow, live PingOne): discover, call and the agent chat work on all three doors. Browser proof on the hosted URL.
+2. Signed in (the redirect sign-in, live PingOne): discover, call and the agent chat work on all three doors. Browser proof on the hosted URL.
 3. No key or token appears in any response, log line or trace (the existing grep tests, plus `kubectl logs` grepped after the browser run).
 4. The pod runs the pushed digest (imageID equals the registry digest), `/api/health` answers demo-health/1, and the page loads over TLS.
 5. The mode cannot be switched on the hosted URL (409 `mode_fixed`): one shared mode would let any visitor switch it, and sign every Real login out with it.
@@ -30,7 +30,7 @@ The rollout model allows a hosted Real instance only as "a Ping-operated real in
 - Two colleagues at once: separate workspaces and logins.
 
 ## Decisions (owner, 2026-11-23)
-1. Gate: the lab's own PingOne sign-in (pi.flow). Real calls need it; Mock stays open.
+1. Gate: the lab's own PingOne sign-in. Real calls need it; Mock stays open. First pi.flow, then the redirect sign-in (see One login below).
 2. Who: colleagues onboarded with the rollout kit's hosted-access profile, plus demouser.
 3. Model: through the Privilege LLM gateway with a virtual key (as mcp-demo-client does), not the Anthropic key directly.
 4. Host: `privilege-gateway-client.<SE cluster domain>` (the full name is in STANDALONE-HOSTS.md, outside this repo: shipped text names no real host).
@@ -42,6 +42,18 @@ The rollout model allows a hosted Real instance only as "a Ping-operated real in
 - Reset on hosted clears only the caller's workspace.
 - The daily agent cap counts only turns that reached the model; gateway-style model ids are kept; the `deploy.sh` tag check reads the last path segment; stale comments and the CLAUDE.md line fixed; a signed-in web test added.
 
+## Second independent review (2026-11-23, `/code-review` on PR #10, 8 findings, all fixed)
+- The daily agent cap: the slot is taken before the turn runs (messages sent at once cannot all pass), and a turn counts once it tried the
+  model (a failed or timed-out model call may still be billed); a turn that never tried gives its slot back.
+- Pending redirect sign-ins: one per browser workspace (a new start replaces it), 5-minute expiry, capped at 200; at the cap a new start is
+  refused (`signin_busy`), never another browser's dropped. The hosted pi.flow store refuses the same way.
+- `/callback` finishes only the sign-in the same browser started (its workspace cookie and the same state, compared in constant time); a
+  wrong browser or state is refused and does not use the run up (login CSRF).
+- Workspaces at the cap: an empty one is forgotten first, so cookieless reads cannot push out anyone's runs.
+- Text: the CLAUDE.md sign-in rule, the k8s manifest and `docs/hosted.md` (the app must allow `https://<host>/callback`) name the redirect
+  sign-in; no real host or local path in this spec.
+- Each code fix has a test that failed before it (`server/test/hosted.test.js`).
+
 ## One login: the redirect sign-in (owner, 2026-11-23)
 The owner asked for one login. pi.flow cannot reuse the browser's PingOne session, so the hosted instance uses the standard redirect sign-in
 (an owner exception to rulebook rule 16, recorded there): `GET /api/auth/redirect/start` keeps state, nonce and the PKCE verifier on the server
@@ -51,7 +63,7 @@ client, PKCE) and reads userinfo, sets the session cookie for that browser's wor
 return-path guard, not-hosted has no route.
 
 ## Local proof on the domain (2026-11-23, owner signed in)
-The live lab container was swapped to this branch with the hosted settings behind the lab-proxy (`local.ping-devops.com`), then put back.
+The live lab container was swapped to this branch with the hosted settings behind the shared lab-proxy on the owner's domain, then put back.
 - Before sign-in: Real discover, call and agent answered 401 `signin_required`; `POST /api/mode` answered 409; the page said to sign in.
 - Redirect sign-in: start sent the browser to PingOne's authorize with PKCE and the proxy callback; the owner signed in as demoUser; the
   lab saw a `real-login` for that browser's workspace.
@@ -63,7 +75,7 @@ The live lab container was swapped to this branch with the hosted settings behin
   (test: forged state and a bad return path).
 
 ## Status of the outside pieces (2026-11-23)
-- Sign-in app `privilege-gateway-client-hosted` created in the PingOne environment where the hosted-access colleagues are (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in `~/.config/demo-kit/pgc-hosted.env`.
+- Sign-in app `privilege-gateway-client-hosted` created in the PingOne environment where the hosted-access colleagues are (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in the owner's local settings file, outside this repo.
 - Keys: waiting on the Pingid-privilege rebuild (new tenant). The rebuild session will create the three door keys, their grants and `pgc-agent-llm` after the gateway cutover.
 - Not done: local proof with a live sign-in, the image, the Secret, the deploy (owner go).
 

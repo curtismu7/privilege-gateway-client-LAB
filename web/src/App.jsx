@@ -31,6 +31,7 @@ const SIGNIN_ERROR = {
   run_expired: "The sign-in took longer than 5 minutes. Use Sign in again.",
   token_refused: "PingOne did not accept the sign-in at the last step. Use Sign in again.",
   userinfo_failed: "PingOne did not say who signed in. Use Sign in again.",
+  signin_busy: "Too many sign-ins are in progress on this lab right now. Try Sign in again in a few minutes.",
 };
 const TALK_KEY = "pgc.panel.talk";
 // Agent chat is first and the tab the lab opens on (owner 2026-11-23): the demo starts by talking to the agent.
