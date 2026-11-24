@@ -333,12 +333,7 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 .pgc-chip { display: inline-flex; align-items: center; margin-left: 0.5rem; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 0.72rem; font-weight: 700; vertical-align: middle; }
 .pgc-chip--ws { margin-left: 0; border-color: var(--on-box); background: transparent; color: var(--on-box); }
 
-/* The lab's name is the page header (owner, 2026-11-24): larger than body text, the tagline under it a step up from small print. */
-.shell-brand__text { display: inline-flex; flex-direction: column; gap: 2px; min-width: 0; line-height: 1.2; }
-.shell-brand__name { font-size: 1.4rem; overflow-wrap: anywhere; }
-.shell-brand__tag { font-weight: 400; font-size: 0.9rem; letter-spacing: 0; opacity: 0.85; overflow-wrap: anywhere; }
-.shell-brand .brand-mark { font-size: 1.4rem; }
-@media (max-width: 600px) { .shell-brand__name, .shell-brand .brand-mark { font-size: 1.15rem; } .shell-brand__tag { display: none; } }
+/* Brand sizes now come from the shared stylesheet (header standard, 2026-11-24). */
 
 .pgc-modebar { margin: 0.5rem 0 0; }
 .pgc-modebar__line { margin: 0; color: var(--text-body); font-size: 0.8rem; overflow-wrap: anywhere; }
