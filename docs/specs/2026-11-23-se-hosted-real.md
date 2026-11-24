@@ -74,10 +74,21 @@ The live lab container was swapped to this branch with the hosted settings behin
   Fixed the same day: the fallback is `./`, which the browser resolves beside `/callback`, so it lands on the lab under any path prefix
   (test: forged state and a bad return path).
 
+## Proof again after the second review (2026-11-24, `e983e8a`, owner signed in)
+Same setup: the live lab container ran this branch with the hosted settings behind the lab-proxy on the owner's domain, then was put back.
+- Before sign-in (curl): Real discover, call and agent answered 401; `POST /api/mode` answered 409. Start sent PingOne the domain callback with
+  S256 PKCE. A callback from a browser without the workspace cookie returned `no_run`; the starting browser with a wrong state returned
+  `no_run` and left the sign-in usable; the right browser and state with a made-up code reached the exchange and returned `token_refused`.
+- Redirect sign-in in Chrome: the owner signed in as demoUser; the rail showed "Signed in with PingOne".
+- Signed in: the agent through the Privilege LLM gateway (`claude-sonnet-4-5`) on `lab-banking-full` listed 18 tools and answered from
+  `list_entitlements` (Allowed). `lab-banking-limited` discovery: Allowed, 7 tools. Asked for `sensitive_holdings` there, the agent said the
+  tool was not listed and did not call it; run by name from the Tools tab, the gateway answered 403, Blocked by policy.
+  `lab-banking-blocked` discovery: 403, Blocked by policy.
+
 ## Status of the outside pieces (2026-11-23)
 - Sign-in app `privilege-gateway-client-hosted` created in the PingOne environment where the hosted-access colleagues are (hosted-access group only, PKCE, no secret; pi.flow probe asks for a username and password). Settings in the owner's local settings file, outside this repo.
 - Keys: waiting on the Pingid-privilege rebuild (new tenant). The rebuild session will create the three door keys, their grants and `pgc-agent-llm` after the gateway cutover.
-- Not done: local proof with a live sign-in, the image, the Secret, the deploy (owner go).
+- Not done: the image, the Secret, the deploy (owner go). The local proof with a live sign-in is done (above).
 
 ## Out of scope
 The ZIP and Drive rollout (forms B and C), the landing page and the shelf entry: these follow once this works.
