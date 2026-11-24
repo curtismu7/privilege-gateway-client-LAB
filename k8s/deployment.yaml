@@ -1,0 +1,60 @@
+# The owner-run SE-hosted REAL instance of the Privilege Gateway Client Lab (spec docs/specs/2026-11-23-se-hosted-real.md). Same image as the
+# local lab. PGC_HOSTED=1: a Real page login (the PingOne redirect sign-in to https://<host>/callback) before any Real call, one workspace per browser, Secure cookies and a daily agent
+# cap per person. Every secret and tenant setting comes from the Secret privilege-gateway-client-real, which the owner creates with kubectl;
+# nothing here names a key, a tenant id or a client id. Placeholders (__IMAGE__, __SE_HOST__) are filled by k8s/deploy.sh.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: privilege-gateway-client
+  labels: { app: privilege-gateway-client }
+spec:
+  replicas: 1   # sign-in sessions, pending sign-ins, workspaces and the daily agent counts are in memory: one pod
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app: privilege-gateway-client }
+  template:
+    metadata:
+      labels: { app: privilege-gateway-client }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      imagePullSecrets:
+        - name: ghcr-pull-secret
+      containers:
+        - name: app
+          image: __IMAGE__
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 7833 }
+          envFrom:
+            - secretRef: { name: privilege-gateway-client-real }
+          env:
+            - { name: PORT, value: "7833" }
+            - { name: PGC_BIND, value: 0.0.0.0 }
+            # Empty = Real when the Secret configures it, else Mock (the image's own default is mock).
+            - { name: MODE, value: "" }
+            - { name: PGC_HOSTED, value: "1" }
+            - { name: LAB_ALLOWED_HOSTS, value: __SE_HOST__ }
+            - { name: PGC_USER_REDIRECT_URI, value: "https://__SE_HOST__/callback" }
+          readinessProbe:
+            httpGet: { path: /api/health, port: http, httpHeaders: [{ name: Host, value: "127.0.0.1:7833" }] }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/health, port: http, httpHeaders: [{ name: Host, value: "127.0.0.1:7833" }] }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 384Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 16Mi } }

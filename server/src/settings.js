@@ -22,5 +22,11 @@ export function readSettings(env = process.env) {
     dataDir: dataDirRaw ? path.resolve(dataDirRaw) : '',
     sessionSecret: String(env.PGC_SESSION_SECRET || ''),
     sessionTtlMs: num(env.PGC_SESSION_TTL_MS, 8 * 3600 * 1000),
+    // The owner-run SE-hosted Real instance (spec docs/specs/2026-11-23-se-hosted-real.md). Set only by the hosted k8s manifest. It turns on:
+    // a Real page login before any Real call, one workspace per browser (a cookie), Secure cookies and a daily agent cap per signed-in person.
+    // Off (the default), the local lab behaves exactly as before.
+    hosted: env.PGC_HOSTED === '1',
+    agentDailyLimit: num(env.PGC_AGENT_DAILY_LIMIT, 40),
+    maxWorkspaces: num(env.PGC_MAX_WORKSPACES, env.PGC_HOSTED === '1' ? 200 : 20),
   };
 }

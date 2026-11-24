@@ -1,0 +1,12 @@
+# TLS for the app's own host, issued by cert-manager through the ClusterIssuer the owner names (CLUSTER_ISSUER). No default.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: privilege-gateway-client
+spec:
+  secretName: privilege-gateway-client-tls
+  dnsNames:
+    - __SE_HOST__
+  issuerRef:
+    kind: ClusterIssuer
+    name: __CLUSTER_ISSUER__

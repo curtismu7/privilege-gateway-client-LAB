@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { api, apiPrefix } from "./api.js";
+import { api, apiPrefix, redirectSignInUrl } from "./api.js";
 
 afterEach(() => { vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
 
@@ -30,3 +30,11 @@ describe("API paths behind the lab-proxy", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("/api/info");
   });
 });
+
+describe("redirectSignInUrl (hosted redirect sign-in)", () => {
+  test("goes through the lab's proxy prefix and returns to the page it started from", () => {
+    expect(redirectSignInUrl("/privilege-gateway-client/")).toBe("/privilege-gateway-client/api/auth/redirect/start?return=%2Fprivilege-gateway-client%2F");
+    expect(redirectSignInUrl("/")).toBe("/api/auth/redirect/start?return=%2F");
+  });
+});
+

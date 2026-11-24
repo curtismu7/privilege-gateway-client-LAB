@@ -469,6 +469,65 @@ describe("Real agent chat", () => {
     expect(JSON.parse(tid("args-text").value)).toEqual({ resource: "prod-db-primary" });
     expect(tid("args-note")).toHaveTextContent("Required: resource");
   });
+
+  test("hosted: in Real a visitor who is not signed in is told to sign in; Mock and a signed-in visitor see no such note", async () => {
+    await mount({ env: AGENT_ENV, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: false } }) } });
+    expect(screen.queryByTestId("hosted-signin")).toBeNull();
+    await toReal();
+    expect(tid("hosted-signin")).toHaveTextContent(/Sign in to run the Real lab/);
+  });
+
+  test("hosted: the rail says a sign-in is needed for Real calls; the local lab keeps 'do not need one'", async () => {
+    const authConfig = { workspace: "default", source: "real", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "pi.flow", configured: true, problems: [] } };
+    await mount({ env: AGENT_ENV, authConfig, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: false } }) } });
+    await toReal();
+    expect(tid("signin-why")).toHaveTextContent(/On this hosted lab, sign in to run the Real gateway calls and the agent/);
+    expect(tid("signin-why")).not.toHaveTextContent(/do not need one/);
+  });
+
+  test("not hosted: the rail keeps saying the gateway calls do not need a page login", async () => {
+    const authConfig = { workspace: "default", source: "real", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "pi.flow", configured: true, problems: [] } };
+    await mount({ env: AGENT_ENV, authConfig });
+    await toReal();
+    expect(tid("signin-why")).toHaveTextContent(/do not need one/);
+  });
+
+  test("hosted: after the redirect sign-in the rail says 'Signed in with PingOne', without the pi.flow label", async () => {
+    const authConfig = { workspace: "default", source: "real", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "redirect", configured: true, problems: [] } };
+    const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
+    await mount({ env: AGENT_ENV, authConfig, session: me });
+    await toReal();
+    expect(tid("rail")).toHaveTextContent("Signed in with PingOne");
+    expect(tid("rail")).not.toHaveTextContent("pi.flow");
+  });
+
+  test("the Real agent note names the Privilege LLM gateway when the agent goes through it", async () => {
+    await mount({ env: { ...REAL_ENV, PGC_LLM_GATEWAY_URL: "https://llm-gw.example", PGC_LLM_VIRTUAL_KEY: "test-only-llm-key", PGC_AGENT_MODEL: "claude-sonnet-4-5" } });
+    await toReal();
+    click("tab-chat");
+    expect(tid("chat-real-note")).toHaveTextContent(/through the Privilege LLM gateway/);
+    expect(tid("chat-real-note")).not.toHaveTextContent(/Anthropic API/);
+  });
+
+  test("hosted: a redirect sign-in that came back with an error says why in words, and the error leaves the address", async () => {
+    window.history.replaceState(null, "", "/?signin_error=signin_refused");
+    await mount({ env: AGENT_ENV });
+    expect(tid("signin-error")).toHaveTextContent(/PingOne refused the sign-in/);
+    expect(window.location.search).toBe("");
+  });
+
+  test("hosted: a sign-in refused because too many are in progress says so in words", async () => {
+    window.history.replaceState(null, "", "/?signin_error=signin_busy");
+    await mount({ env: AGENT_ENV });
+    expect(tid("signin-error")).toHaveTextContent(/Too many sign-ins are in progress/);
+  });
+
+  test("hosted: a visitor with a Real page login sees no sign-in note in Real", async () => {
+    const me = { source: "real-login", sub: "u-1", name: "Pat", username: "pat", email: null };
+    await mount({ env: AGENT_ENV, session: me, hooks: { "/api/info": (_b, l) => ({ ...l.info(), hosted: { signinRequired: true, signedIn: true } }) } });
+    await toReal();
+    expect(screen.queryByTestId("hosted-signin")).toBeNull();
+  });
 });
 
 describe("Agent chat first, prompts and inline evidence (owner 2026-11-23)", () => {

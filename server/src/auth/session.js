@@ -15,7 +15,7 @@ export function cookieValue(header, name) {
   return null;
 }
 
-export function createSessions({ secret, ttlMs, now = Date.now }) {
+export function createSessions({ secret, ttlMs, now = Date.now, secure = false }) {
   const key = secret || randomBytes(32).toString('hex'); // no secret configured: sessions die with the process
   const sign = (b) => createHmac('sha256', key).update(b).digest('base64url');
   const pack = (payload) => { const body = Buffer.from(JSON.stringify({ ...payload, e: now() + ttlMs })).toString('base64url'); return `${body}.${sign(body)}`; };
@@ -38,6 +38,6 @@ export function createSessions({ secret, ttlMs, now = Date.now }) {
         return typeof v.p === 'string' ? { persona: v.p, expiresAt: v.e } : null;
       } catch { return null; }
     },
-    cookie: (value, maxAgeSec, workspace) => `${cookieName(workspace)}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSec}`,
+    cookie: (value, maxAgeSec, workspace) => `${cookieName(workspace)}=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAgeSec}${secure ? '; Secure' : ''}`,
   };
 }

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: privilege-gateway-client
+  labels: { app: privilege-gateway-client }
+spec:
+  selector: { app: privilege-gateway-client }
+  ports:
+    - { name: http, port: 80, targetPort: http }

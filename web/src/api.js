@@ -32,6 +32,8 @@ export const workspace = readWorkspace(typeof window === "undefined" ? "" : wind
 // be redirected that way. On http://127.0.0.1:7833 the page is at the root and there is no prefix.
 const PROXY_PREFIX = "/privilege-gateway-client";
 export const apiPrefix = (pathname) => (pathname === PROXY_PREFIX || String(pathname).startsWith(`${PROXY_PREFIX}/`) ? PROXY_PREFIX : "");
+// The hosted redirect sign-in starts here, through the same prefix as every API call, and comes back to the page it started from.
+export const redirectSignInUrl = (pathname) => `${apiPrefix(pathname)}/api/auth/redirect/start?return=${encodeURIComponent(pathname)}`;
 
 export async function api(path, { method = "GET", body, signal } = {}) {
   let res;

@@ -88,14 +88,14 @@ export default function IdentityRail({ lab, onSignIn, open, onToggle }) {
             {me ? (
               <>
                 <div className="pgc-id__name" data-testid="page-login-name">{visible(me.name ?? me.username ?? me.sub)}</div>
-                <div className="pgc-id__mail">{me.source === "mock-persona" ? "Mock persona (simulated sign-in)" : "Signed in with PingOne (pi.flow)"}</div>
+                <div className="pgc-id__mail">{me.source === "mock-persona" ? "Mock persona (simulated sign-in)" : authConfig?.real?.flow === "redirect" ? "Signed in with PingOne" : "Signed in with PingOne (pi.flow)"}</div>
                 {mock && me.expiresAt && <div className="pgc-id__mail" data-testid="session-expiry">{expiryText(me.expiresAt)}</div>}
                 <button type="button" onClick={lab.signOut} data-testid="rail-sign-out">Sign out</button>
               </>
             ) : (
               <>
                 <div className="pgc-id__name">Not signed in</div>
-                <div className="pgc-id__mail" id="pgc-signin-why" data-testid="signin-why">{canSignIn ? "No page login yet. The gateway calls on this page do not need one." : signInWhy}</div>
+                <div className="pgc-id__mail" id="pgc-signin-why" data-testid="signin-why">{canSignIn ? (info.hosted && !mock ? "No page login yet. On this hosted lab, sign in to run the Real gateway calls and the agent." : "No page login yet. The gateway calls on this page do not need one.") : signInWhy}</div>
                 <button type="button" onClick={onSignIn} disabled={!canSignIn} aria-describedby="pgc-signin-why" title={canSignIn ? undefined : signInWhy} data-testid="rail-sign-in">Sign in</button>
               </>
             )}
