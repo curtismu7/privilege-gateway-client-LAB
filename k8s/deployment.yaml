@@ -22,7 +22,10 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         seccompProfile: { type: RuntimeDefault }
+      # ghcr-pull-curtismu7 reads curtismu7 packages (this image). ghcr-pull-secret holds a cmuir_pingcorp
+      # read token since 2026-11-24 and gets 403 on curtismu7 packages; kept second for older clusters.
       imagePullSecrets:
+        - name: ghcr-pull-curtismu7
         - name: ghcr-pull-secret
       containers:
         - name: app
