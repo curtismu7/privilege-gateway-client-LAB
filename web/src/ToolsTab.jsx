@@ -1,6 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./Icon.jsx";
 import { visible } from "./safeText.js";
+
+// How long the tool boxes keep the "just arrived" tint after the gateway's list fills in (owner, 2026-11-27: make them clearly new, and scroll to them).
+export const FRESH_MS = 6000;
 
 // A name that may be long: break after each underscore so it wraps instead of widening the grid.
 const Wrapped = ({ text }) => {
@@ -79,10 +82,27 @@ export default function ToolsTab({ lab, onPick, filterRef, onDiscover, onRunByNa
   const tools = lab.hasTools ? lab.discovery.tools : null;
   const mock = lab.info.source === "mock";
   const rows = useMemo(() => (tools ?? []).filter((t) => String(t.name).toLowerCase().includes(filter.trim().toLowerCase())), [tools, filter]);
+
+  // "Just arrived": each new discovery result (not a keystroke in the filter, and not a list that was already there when this mounted)
+  // tints the boxes for FRESH_MS and scrolls the first box into view once. Reduced motion gets an instant jump, no smooth scroll.
+  const gridRef = useRef(null);
+  const panelRef = useRef(null);
+  const atMount = useRef(lab.discovery);
+  const [fresh, setFresh] = useState(false);
+  const arrived = Boolean(tools && tools.length > 0);
+  useEffect(() => {
+    if (!arrived || lab.discovery === atMount.current) return undefined;
+    setFresh(true);
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    (gridRef.current ?? panelRef.current)?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
+    const t = setTimeout(() => setFresh(false), FRESH_MS);
+    return () => clearTimeout(t);
+  }, [lab.discovery, arrived]);
+
   if (!tools || tools.length === 0) return <EmptyState lab={lab} onDiscover={onDiscover} />;
   const name = lab.identity?.name;
   return (
-    <div data-testid="tools-panel">
+    <div data-testid="tools-panel" ref={panelRef}>
       <label className="pgc-lbl" htmlFor="pgc-filter">Filter tools</label>
       <input id="pgc-filter" ref={filterRef} className="pgc-filter" type="search" placeholder="Filter tools..." autoComplete="off" value={filter} onChange={(e) => setFilter(e.target.value)} data-testid="tool-filter" />
       <div className="pgc-count">
@@ -97,12 +117,12 @@ export default function ToolsTab({ lab, onPick, filterRef, onDiscover, onRunByNa
       {rows.length === 0 ? (
         <p className="pgc-hint" data-testid="tools-nomatch">No tools match “{visible(filter)}”.</p>
       ) : (
-        <ul className="pgc-tool-grid" data-testid="tool-grid">
+        <ul className="pgc-tool-grid" data-testid="tool-grid" ref={gridRef} data-fresh={fresh ? "true" : undefined}>
           {rows.map((t) => {
             const n = Object.keys(t.args ?? {}).length;
             return (
               <li key={t.name}>
-                <button type="button" className="pgc-tool" aria-pressed={lab.selectedTool === t.name} data-testid={`tool-${t.name}`} onClick={() => onPick(t.name)}>
+                <button type="button" className={fresh ? "pgc-tool pgc-tool--fresh" : "pgc-tool"} aria-pressed={lab.selectedTool === t.name} data-testid={`tool-${t.name}`} onClick={() => onPick(t.name)}>
                   <span className="pgc-tool__name"><Wrapped text={t.name} /></span>
                   <span className="pgc-tool__params">{n} param{n === 1 ? "" : "s"}</span>
                   {t.description && <span className="pgc-tool__desc">{visible(t.description)}</span>}

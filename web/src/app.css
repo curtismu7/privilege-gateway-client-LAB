@@ -138,6 +138,12 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 .pgc-tool__name { font-family: var(--font-mono); font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
 .pgc-tool__params, .pgc-tool__desc, .pgc-tool__why { font-size: 0.78rem; color: var(--text-body); overflow-wrap: anywhere; }
 .pgc-tool__params { color: var(--muted); }
+/* Just arrived (owner, 2026-11-27): a new list of tools is tinted for FRESH_MS (ToolsTab.jsx) so it is plain they just filled in, and the page scrolls to the first box.
+   The informational blue, never red or amber (those mean error and refusal here); a selected box (below) still wins. The tint fades out; with reduced motion it just switches off. */
+.pgc-tool { transition: background-color 1.2s ease, border-color 1.2s ease; }
+.pgc-tool--fresh { background: color-mix(in oklab, var(--status-info) 20%, var(--surface)); border-color: var(--status-info); }
+.pgc-tool-grid { scroll-margin-top: 7rem; }
+@media (prefers-reduced-motion: reduce) { .pgc-tool { transition: none; } }
 .pgc-tool[aria-pressed="true"] { border: 2px solid var(--focus); background: var(--surface-2); color: var(--text); padding: 7px 11px; }
 .pgc-tool[data-refused] { border-style: dashed; background: var(--surface-2); }
 .pgc-tool[data-refused] .pgc-tool__name { color: var(--text-body); }
