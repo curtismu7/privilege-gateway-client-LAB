@@ -143,6 +143,7 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 .pgc-tool { transition: background-color 1.2s ease, border-color 1.2s ease; }
 .pgc-tool--fresh { background: color-mix(in oklab, var(--status-info) 20%, var(--surface)); border-color: var(--status-info); }
 .pgc-tool-grid { scroll-margin-top: 7rem; }
+.pgc-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 @media (prefers-reduced-motion: reduce) { .pgc-tool { transition: none; } }
 .pgc-tool[aria-pressed="true"] { border: 2px solid var(--focus); background: var(--surface-2); color: var(--text); padding: 7px 11px; }
 .pgc-tool[data-refused] { border-style: dashed; background: var(--surface-2); }

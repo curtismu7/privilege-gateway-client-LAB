@@ -91,7 +91,8 @@ export default function ToolsTab({ lab, onPick, filterRef, onDiscover, onRunByNa
   const [fresh, setFresh] = useState(false);
   const arrived = Boolean(tools && tools.length > 0);
   useEffect(() => {
-    if (!arrived || lab.discovery === atMount.current) return undefined;
+    // Not a new list (none at all, or the one that was here at mount): the tint must be off, whatever an earlier timer was doing.
+    if (!arrived || lab.discovery === atMount.current) { setFresh(false); return undefined; }
     setFresh(true);
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     (gridRef.current ?? panelRef.current)?.scrollIntoView?.({ behavior: reduce ? "auto" : "smooth", block: "start" });
@@ -99,9 +100,17 @@ export default function ToolsTab({ lab, onPick, filterRef, onDiscover, onRunByNa
     return () => clearTimeout(t);
   }, [lab.discovery, arrived]);
 
-  if (!tools || tools.length === 0) return <EmptyState lab={lab} onDiscover={onDiscover} />;
+  // The tint is colour only, so say it in words too: a polite live region that always exists (a region added together with its text is often not read).
+  const arrivedNote = (
+    <span className="pgc-sr" role="status" aria-live="polite" data-testid="tools-arrived">
+      {fresh && arrived ? `${tools.length} tool${tools.length === 1 ? "" : "s"} just arrived` : ""}
+    </span>
+  );
+  if (!tools || tools.length === 0) return <>{arrivedNote}<EmptyState lab={lab} onDiscover={onDiscover} /></>;
   const name = lab.identity?.name;
   return (
+    <>
+    {arrivedNote}
     <div data-testid="tools-panel" ref={panelRef}>
       <label className="pgc-lbl" htmlFor="pgc-filter">Filter tools</label>
       <input id="pgc-filter" ref={filterRef} className="pgc-filter" type="search" placeholder="Filter tools..." autoComplete="off" value={filter} onChange={(e) => setFilter(e.target.value)} data-testid="tool-filter" />
@@ -134,5 +143,6 @@ export default function ToolsTab({ lab, onPick, filterRef, onDiscover, onRunByNa
         </ul>
       )}
     </div>
+    </>
   );
 }
