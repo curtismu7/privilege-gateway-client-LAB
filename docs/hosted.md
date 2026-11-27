@@ -38,4 +38,4 @@ kubectl -n <namespace> create secret generic privilege-gateway-client-real --fro
 ## Deploy (owner-approved)
 Build for linux/arm64 (all SE nodes are arm64), push to GHCR with an immutable tag, then
 `OWNER_APPROVED=1 NAMESPACE=... IMAGE=...:<sha> SE_HOST=... INGRESS_CLASS=... CLUSTER_ISSUER=... k8s/deploy.sh` (`--dry-run` first).
-Verify by content, the pod imageID against the registry digest, and a signed-in browser run of the three doors and the agent.
+Verify by content, the pod imageID against the registry digest, and a signed-in browser run of the three doors and the agent. The full door lists every tool the gateway offers, so its count is whatever the gateway answers, not a fixed number: it was 18 on 2026-11-24 and 19 on 2026-11-27 (the added tool is `transfer_funds`). Limited stays 7 and blocked lists none; check those, and record the full-door count you saw.

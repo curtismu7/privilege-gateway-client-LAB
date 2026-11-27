@@ -6,7 +6,7 @@
 
 ## Before you start
 
-You are about to show a client for a PingOne Privilege MCP gateway: the thing an AI agent uses to ask "which tools may I use, and may I use this one?". Say first what is real and what is not. The page banner says the gateway is simulated, and it stays on screen in presenter mode too. In Mock, the gateway, its three doors, the 18 tools, the tokens and every result are produced by this lab, offline, with no tenant and no network. In Real (owner-run, from the lab's own settings) the lab talks to one gateway you configured and shows only what that gateway actually answered.
+You are about to show a client for a PingOne Privilege MCP gateway: the thing an AI agent uses to ask "which tools may I use, and may I use this one?". Say first what is real and what is not. The page banner says the gateway is simulated, and it stays on screen in presenter mode too. In Mock, the gateway, its three doors, the 18 tools, the tokens and every result are produced by this lab, offline, with no tenant and no network. In Real (owner-run, from the lab's own settings) the lab talks to one gateway you configured and shows only what that gateway actually answered, including how many tools the full door lists (the Mock's 18 is the lab's own catalogue; a Real gateway lists whatever its backend offers, so say the number the page shows, not 18).
 
 The story is told for {{castBrand}}, an invented example. The verticals change the words in the stories, not the doors and not the tools.
 
