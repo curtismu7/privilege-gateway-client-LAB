@@ -576,7 +576,7 @@ def real_checks(browser):
         return
     ctx, page = new_page(browser, 1440, 900, "light", base=REAL)
     T = "[real 1440]"
-    check(f"{T} the banner is live", page.get_attribute('[data-testid="sim-banner"]', "data-state") == "live")
+    check(f"{T} the source is Real", page.get_attribute('[data-testid="mode-status"]', "data-source") == "real")
     discover(page, "lab-banking-limited")
     page.click('[data-testid="tool-sensitive_tax_record"]'); page.click('[data-testid="run"]')
     page.wait_for_function("document.querySelector('[data-testid=verdict-card]')?.dataset.verdict !== 'working'")
@@ -598,6 +598,13 @@ def real_checks(browser):
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        # Real-or-mock modal (shared mode-modal): every context starts with it dismissed, so it never covers a click.
+        _new_context = browser.new_context
+        def _dismissed_context(*a, **k):
+            c = _new_context(*a, **k)
+            c.add_init_script("try{sessionStorage.setItem('pgc-mode-seen-mock','1');sessionStorage.setItem('pgc-mode-seen-real','1')}catch(e){}")
+            return c
+        browser.new_context = _dismissed_context
         for theme in ("light", "dark"):
             wide_checks(browser, theme)
             scenario_checks(browser, theme)

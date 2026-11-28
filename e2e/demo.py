@@ -132,7 +132,7 @@ def story_checks(browser, w, h, vp, theme):
         check(f"{T} {sid}: the card is open and the picker agrees", page.input_value('[data-testid="story-select"]') == sid and page.query_selector('[data-testid="story-card"]') is not None)
         check(f"{T} {sid}: the check line says the run matches the story", "as the story says" in (text(page, '[data-testid="story-check"]') or ""), str(text(page, '[data-testid="story-check"]')))
         check(f"{T} {sid}: no unfilled {{{{token}}}} and no sideways scroll", "{{" not in (page.inner_text("body")) and no_sideways(page))
-        check(f"{T} {sid}: the simulation banner is first in main", page.evaluate("document.querySelector('main').firstElementChild.dataset.testid") == "sim-banner")
+        check(f"{T} {sid}: the mode status is first in main and there is no old banner", page.evaluate("document.querySelector('main').firstElementChild.dataset.testid") == "mode-status" and page.query_selector('[data-testid="sim-banner"]') is None)
         if sid in ("S02", "S03"):
             check(f"{T} {sid}: a refusal is not red anywhere in the story card or the verdict", page.evaluate(RED_SCAN, '[data-testid="story-card"]') == [] and page.evaluate(RED_SCAN, '[data-testid="verdict-card"]') == [],
                   str(page.evaluate(RED_SCAN, '[data-testid="verdict-card"]'))[:200])
@@ -285,7 +285,7 @@ def mode_checks(browser, w, h, vp, theme):
     st = text(page, '[data-testid="mode-source"]') or ""
     check(f"{T} the source is shown at all times: Mock, simulated, and Real is not configured", "Source: Mock" in st and "Real option is off" in st, st)
     shot(page, "mode-real-disabled", vp, theme)
-    check(f"{T} the select shows Mock and the banner says simulation", page.input_value('[data-testid="mode-select"]') == "mock" and "Simulation" in text(page, '[data-testid="sim-banner"]'))
+    check(f"{T} the select shows Mock and the source line says simulated", page.input_value('[data-testid="mode-select"]') == "mock" and "(simulated)" in text(page, '[data-testid="mode-source"]') and page.query_selector('[data-testid="sim-banner"]') is None)
     check(f"{T} no hostile popups and no console errors", clean(page), str(page.msgs))
     page.msgs.clear()
     status = page.evaluate("fetch('/api/mode', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({source: 'real'})}).then(r => r.status)")
@@ -306,7 +306,7 @@ def real_checks(browser, w, h, vp, theme):
         return
     T = f"[real {vp} {theme}]"
     ctx, page = new_page(browser, w, h, theme, base=REAL)
-    check(f"{T} Real is the source: live banner and 'Source: Real'", page.get_attribute('[data-testid="sim-banner"]', "data-state") == "live" and "Source: Real" in text(page, '[data-testid="mode-source"]'))
+    check(f"{T} Real is the source: 'Source: Real'", page.get_attribute('[data-testid="mode-status"]', "data-source") == "real" and "Source: Real" in text(page, '[data-testid="mode-source"]'))
     check(f"{T} a Mock-only story is marked and cannot run in Real", "(Mock only)" in page.inner_text('[data-testid="story-select"]'))
     page.select_option('[data-testid="story-select"]', "S04")
     blk = text(page, '[data-testid="story-block"]') or ""
@@ -351,10 +351,10 @@ def real_checks(browser, w, h, vp, theme):
     page.wait_for_function("!document.querySelector('[data-testid=who]')")
     # the toggle works in both directions and reloads the data
     page.select_option('[data-testid="mode-select"]', "mock")
-    page.wait_for_function("document.querySelector('[data-testid=sim-banner]')?.dataset.state !== 'live'")
+    page.wait_for_function("document.querySelector('[data-testid=mode-status]')?.dataset.source === 'mock'")
     check(f"{T} back to Mock: the source line says Mock and the story that was blocked now runs", "Source: Mock" in text(page, '[data-testid="mode-source"]') and not page.is_disabled('[data-testid="story-run"]') if page.query_selector('[data-testid="story-run"]') else "Source: Mock" in text(page, '[data-testid="mode-source"]'))
     page.select_option('[data-testid="mode-select"]', "real")
-    page.wait_for_function("document.querySelector('[data-testid=sim-banner]')?.dataset.state === 'live'")
+    page.wait_for_function("document.querySelector('[data-testid=mode-status]')?.dataset.source === 'real'")
     check(f"{T} and to Real again", "Source: Real" in text(page, '[data-testid="mode-source"]'))
     check(f"{T} no sideways scroll, no hostile popups, no console errors", no_sideways(page) and clean(page), str(page.msgs))
     ctx.close()
@@ -380,19 +380,15 @@ def presenter_checks(browser, theme):
     page.wait_for_timeout(400)
     fs_after = page.evaluate("parseFloat(getComputedStyle(document.documentElement).fontSize)")
     check(f"{T} larger type in presenter mode ({fs_before} -> {fs_after})", fs_after > fs_before * 1.1)
-    ban = rect(page, '[data-testid="sim-banner"]')
-    check(f"{T} the banner is on screen (sticky) and is first in main", ban is not None and ban["y"] >= -1 and ban["b"] > 0 and page.evaluate("document.querySelector('main').firstElementChild.dataset.testid") == "sim-banner", str(ban))
-    # arrangement as the page leaves it: the talk track and the reel side by side, the verdict covered by neither (and the banner on top)
+    check(f"{T} the mode status is first in main, there is no old banner and no modal in presenter mode", page.evaluate("document.querySelector('main').firstElementChild.dataset.testid") == "mode-status" and page.query_selector('[data-testid="sim-banner"]') is None and page.query_selector('[data-testid="mode-modal"]') is None)
+    # arrangement as the page leaves it: the talk track and the reel side by side, the verdict covered by neither
     page.wait_for_timeout(200)
     talk, reel, card = rect(page, '[data-testid="talk-track-dialog"]'), rect(page, '[data-testid="panel-reel"]'), rect(page, '[data-testid="verdict-card"]')
     check(f"{T} the talk track and the Movie reel do not overlap each other", overlap(talk, reel) == 0, f"{talk} {reel}")
     check(f"{T} the panels do not cover the verdict card", overlap(card, reel) == 0 and overlap(card, talk) == 0, f"{card} {reel} {talk}")
-    check(f"{T} the banner is not covering the verdict card's top either", rect(page, '[data-testid="sim-banner"]')["b"] <= card["y"] + 1, f"{rect(page, '[data-testid=sim-banner]')} {card}")
     shot(page, "presenter", "1440", theme)
     page.evaluate("window.scrollBy(0, 500)")
     page.wait_for_timeout(150)
-    ban2 = rect(page, '[data-testid="sim-banner"]')
-    check(f"{T} the banner stays visible after scrolling", ban2 is not None and ban2["y"] >= -1 and ban2["y"] < 5, str(ban2))
     page.evaluate("window.scrollTo(0, 0)")
     page.wait_for_timeout(100)
     hdr = rect(page, ".shell-bar")
@@ -426,9 +422,8 @@ def presenter_narrow(browser, theme):
     wait_word(page, "Allowed")
     page.wait_for_selector('[data-testid="talk-track-dialog"]')
     page.wait_for_timeout(300)
-    check(f"{T} a phone gets the talk track as a bottom sheet, the banner is on screen, no sideways scroll", rect(page, '[data-testid="talk-track-dialog"]')["w"] <= 375 and no_sideways(page) and page.query_selector('[data-testid="panel-reel"]') is None)
-    ban = rect(page, '[data-testid="sim-banner"]')
-    check(f"{T} the simulation banner is still on screen", ban is not None and ban["b"] > 0)
+    check(f"{T} a phone gets the talk track as a bottom sheet, no sideways scroll", rect(page, '[data-testid="talk-track-dialog"]')["w"] <= 375 and no_sideways(page) and page.query_selector('[data-testid="panel-reel"]') is None)
+    check(f"{T} the source line is still on the page and there is no modal", page.query_selector('[data-testid="mode-source"]') is not None and page.query_selector('[data-testid="mode-modal"]') is None)
     shot(page, "presenter", "375", theme)
     check(f"{T} no hostile popups and no console errors", clean(page), str(page.msgs))
     ctx.close()
@@ -601,9 +596,36 @@ def contrast_checks(browser):
     ctx.close()
 
 
+def modal_checks(browser):
+    """The Real-or-mock modal on a session that has not dismissed it: MOCK, no old banner, Got it closes it, a reload does not bring it back."""
+    T = "[modal 1440]"
+    ctx = browser.fresh_context(viewport={"width": 1440, "height": 900})
+    page = ctx.new_page()
+    page.goto(BASE)
+    page.wait_for_selector('[data-testid="mode-modal"]')
+    check(f"{T} a fresh session opens on MOCK", page.get_attribute('[data-testid="mode-modal"]', "data-mode") == "mock" and "MOCK" in text(page, '[data-testid="mode-modal"]'))
+    check(f"{T} there is no old simulation banner", page.query_selector('[data-testid="sim-banner"]') is None)
+    shot(page, "modal", "1440", "light")
+    page.click('[data-testid="mode-modal-ok"]')
+    check(f"{T} Got it closes it", page.query_selector('[data-testid="mode-modal"]') is None)
+    page.reload()
+    page.wait_for_selector('[data-testid="verdict-card"]')
+    check(f"{T} a reload in the same session does not show it again", page.query_selector('[data-testid="mode-modal"]') is None)
+    ctx.close()
+
+
 def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        # Real-or-mock modal (shared mode-modal): every context starts with it dismissed, so it never covers a click.
+        _new_context = browser.new_context
+        browser.fresh_context = _new_context  # the modal check below opens a session that has not dismissed it
+        def _dismissed_context(*a, **k):
+            c = _new_context(*a, **k)
+            c.add_init_script("try{sessionStorage.setItem('pgc-mode-seen-mock','1');sessionStorage.setItem('pgc-mode-seen-real','1')}catch(e){}")
+            return c
+        browser.new_context = _dismissed_context
+        modal_checks(browser)
         for theme in ("light", "dark"):
             for (w, h, vp) in ((1440, 900, "1440"), (375, 812, "375")):
                 story_checks(browser, w, h, vp, theme)
