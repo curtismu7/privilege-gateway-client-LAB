@@ -16,6 +16,7 @@ const mount = async () => {
   vi.stubGlobal("fetch", fetchFrom(t.api));
   render(<App />);
   await screen.findByTestId("verdict-card");
+  fireEvent.click(tid("mode-modal-ok")); // the Real-or-mock modal opens the page: close it, as a person would
 };
 const tid = (x) => screen.getByTestId(x);
 const boxes = () => [...document.querySelectorAll(".pgc-tool")];
