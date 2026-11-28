@@ -28,11 +28,13 @@ beforeEach(() => { try { localStorage.clear(); } catch { /* none */ } });
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("shell and layout", () => {
-  test("the simulation banner is the first element of main, the shell bar and the Mock/Real toggle are there, and the verdict leads the stage", async () => {
+  test("the mode status is the first element of main, the old simulation banner is gone, the shell bar and the Mock/Real toggle are there, and the verdict leads the stage", async () => {
     await mount();
     const main = document.querySelector("main");
-    expect(main.firstElementChild).toBe(tid("sim-banner"));
-    expect(tid("sim-banner")).toHaveTextContent(/simulation/i);
+    expect(main.firstElementChild).toBe(tid("mode-status"));
+    expect(screen.queryByTestId("sim-banner")).toBeNull();
+    expect(document.querySelector("main > .banner, [data-testid=sim-banner]")).toBeNull();
+    expect(tid("mode-source")).toHaveTextContent(/Source: Mock \(simulated\)/); // the source stays on the page after the modal is dismissed
     expect(document.querySelectorAll("header.shell-bar")).toHaveLength(1);
     expect(tid("mode-select")).toHaveValue("mock");
     expect(tid("mode-select").querySelector('[data-testid="mode-real"]')).toBeDisabled();
@@ -73,7 +75,51 @@ describe("shell and layout", () => {
     vi.stubGlobal("fetch", fetchFrom(t.api));
     render(<App />);
     expect(await screen.findByTestId("boot-error")).toHaveTextContent(/could not be reached/);
-    expect(tid("sim-banner")).toBeInTheDocument();
+    expect(tid("mode-modal")).toHaveAttribute("data-mode", "mock"); // an unknown mode reads as MOCK, the cautious label
+    expect(screen.queryByTestId("sim-banner")).toBeNull();
+  });
+});
+
+describe("Real-or-mock modal", () => {
+  test("opens on MOCK with the lab's own line (nothing leaves this machine, held calls and chat simulated); Got it closes it and a remount in the same session does not show it", async () => {
+    const view = await mount();
+    const modal = tid("mode-modal");
+    expect(modal).toHaveAttribute("data-mode", "mock");
+    expect(modal).toHaveTextContent("MOCK");
+    expect(modal).toHaveTextContent(/simulated inside this lab's own process/);
+    expect(modal).toHaveTextContent(/Nothing leaves this machine/);
+    expect(modal).toHaveTextContent(/held calls, scenarios and the agent chat are simulated too/);
+    expect(document.querySelector("main").contains(modal)).toBe(false); // rendered after </main>
+    click("mode-modal-ok");
+    expect(screen.queryByTestId("mode-modal")).toBeNull();
+    view.unmount();
+    vi.stubGlobal("fetch", fetchFrom(t.api));
+    render(<App />);
+    await screen.findByTestId("verdict-card");
+    expect(screen.queryByTestId("mode-modal")).toBeNull();
+  });
+
+  test("a switch to Real shows REAL with the observed-or-inferred hedge and the gateway origin, even after MOCK was dismissed; switching back does not show MOCK again", async () => {
+    await mount({ env: REAL_ENV });
+    click("mode-modal-ok");
+    fireEvent.change(tid("mode-select"), { target: { value: "real" } });
+    await waitFor(() => expect(tid("mode-modal")).toHaveAttribute("data-mode", "real"));
+    expect(tid("mode-modal")).toHaveTextContent("REAL");
+    expect(tid("mode-modal")).toHaveTextContent(/observed \(read from the answer\) or inferred/);
+    expect(tid("mode-modal")).toHaveTextContent(/https:\/\/gateway\.example/);
+    click("mode-modal-ok");
+    fireEvent.change(tid("mode-select"), { target: { value: "mock" } });
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "mock"));
+    expect(screen.queryByTestId("mode-modal")).toBeNull();
+  });
+
+  test("a lab that starts in Real opens on REAL and is held while loading, so MOCK never flashes first", async () => {
+    t = createTestApi({ env: { ...REAL_ENV, MODE: "real" } });
+    vi.stubGlobal("fetch", fetchFrom(t.api));
+    render(<App />);
+    expect(screen.queryByTestId("mode-modal")).toBeNull(); // still loading
+    await screen.findByTestId("verdict-card");
+    expect(tid("mode-modal")).toHaveAttribute("data-mode", "real");
   });
 });
 
@@ -331,12 +377,12 @@ describe("mock sign-in", () => {
 });
 
 describe("Real mode", () => {
-  test("switching to Real reloads the data, flips the banner to live, shows the identity as declared by settings, and the chat is not offered", async () => {
+  test("switching to Real reloads the data, flips the mode status to Real, shows the identity as declared by settings, and the chat is not offered", async () => {
     await mount({ env: REAL_ENV });
     await discover();
     expect(tid("mode-select").querySelector('[data-testid="mode-real"]')).not.toBeDisabled();
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(word()).toBe("Ready");
     expect(tid("gateway-identity")).toHaveTextContent("Identity declared by this lab's settings");
     expect(within(tid("door-picker")).getAllByRole("radio")).toHaveLength(1);
@@ -347,7 +393,7 @@ describe("Real mode", () => {
     expect(tid("chat-real-off")).toHaveTextContent(/Tools tab/);
     // and back: a visible toggle that works in both directions
     fireEvent.change(tid("mode-select"), { target: { value: "mock" } });
-    await waitFor(() => expect(tid("sim-banner")).not.toHaveAttribute("data-state"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "mock"));
     expect(within(tid("door-picker")).getAllByRole("radio")).toHaveLength(3);
   });
 
@@ -369,7 +415,7 @@ async function realShapedRuns() {
   return { disc, call, blocked };
 }
 const AGENT_ENV = { ...REAL_ENV, PGC_ANTHROPIC_API_KEY: "test-only-model-key" };
-const toReal = async () => { fireEvent.change(tid("mode-select"), { target: { value: "real" } }); await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live")); };
+const toReal = async () => { fireEvent.change(tid("mode-select"), { target: { value: "real" } }); await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real")); };
 
 describe("Real agent chat", () => {
   test("a configured Real agent sends the text history, shows its reply, each step with the gateway's verdict, and a chip opens that run", async () => {

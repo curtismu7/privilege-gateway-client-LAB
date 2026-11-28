@@ -374,14 +374,12 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 /* The shared talk track keeps a story's paragraphs as one text with blank lines; show them as paragraphs. */
 [data-testid="talk-track"] p { white-space: pre-line; overflow-wrap: anywhere; }
 
-/* Presenter mode: larger type (the banner stays where it is, first in the page). Phones get a smaller step: they have no room for more. */
+/* Presenter mode: larger type. Phones get a smaller step: they have no room for more. */
 :root[data-presenter="1"] { font-size: calc(var(--fs, 16px) * 1.06); }
 @media (min-width: 901px) { :root[data-presenter="1"] { font-size: calc(var(--fs, 16px) * 1.15); } }
 /* With the Talk track open beside the page (a wide screen), the page keeps clear of it instead of sitting under it. */
 @media (min-width: 1100px) { :root[data-presenter="1"][data-talk="open"] .pgc-main { padding-right: 462px; } }
 
-/* Presenter mode keeps the banner on screen while the page scrolls (the rule: the banner stays visible in presenter mode too). */
-:root[data-presenter="1"] .banner { position: sticky; top: 0; z-index: 60; }
 /* Presenter mode folds the identity rail into its one-line bar (the same bar a phone gets), so the verdict has the whole width and the panels fit beneath it. */
 :root[data-presenter="1"] .pgc-layout { grid-template-columns: minmax(0, 1fr); }
 :root[data-presenter="1"] .pgc-rail__toggle { display: flex; }
