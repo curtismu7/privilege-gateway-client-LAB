@@ -141,7 +141,7 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 /* Just arrived (owner, 2026-11-27): a new list of tools is tinted for FRESH_MS (ToolsTab.jsx) so it is plain they just filled in, and the page scrolls to the first box.
    The informational blue, never red or amber (those mean error and refusal here); a selected box (below) still wins. The tint fades out; with reduced motion it just switches off. */
 .pgc-tool { transition: background-color 1.2s ease, border-color 1.2s ease; }
-.pgc-tool--fresh { background: color-mix(in oklab, var(--status-info) 20%, var(--surface)); border-color: var(--status-info); }
+.pgc-tool--fresh { background: var(--surface-2); border-color: var(--status-info); }
 .pgc-tool-grid { scroll-margin-top: 7rem; }
 .pgc-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 @media (prefers-reduced-motion: reduce) { .pgc-tool { transition: none; } }
@@ -192,7 +192,7 @@ button:disabled:not(.pgc-tool):not(.pgc-door):not(.pgc-linkbtn):not(.pgc-chipwor
 /* ---- chat -------------------------------------------------------------------------------------------------------------------------- */
 /* The Agent chat panel has its own tinted background so it is easy to find (owner 2026-11-23): a light wash of the info blue over the surface,
    from theme tokens so it follows light and dark. Messages sit on the plain surface to stand out from it. */
-#panel-chat { background: color-mix(in oklab, var(--status-info) 14%, var(--surface)); border-radius: 0 0 10px 10px; }
+#panel-chat { background: var(--surface-2); border-radius: 0 0 10px 10px; }
 #panel-chat .pgc-msg { background: var(--surface); }
 #panel-chat .pgc-msg--you { background: var(--surface-2); }
 .pgc-chat { display: grid; gap: 0.5rem; margin: 0.8rem 0; }

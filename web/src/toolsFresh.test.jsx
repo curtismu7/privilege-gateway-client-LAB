@@ -140,11 +140,12 @@ describe("the tint's colour rules (app.css)", () => {
   const css = fs.readFileSync(path.join(process.cwd(), "src", "app.css"), "utf8");
   const rule = (sel) => { const m = css.match(new RegExp(`${sel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{[^}]*\\}`)); return m ? m[0] : ""; };
 
-  test("it is the informational blue, never red or amber, and a selected box overrides it", () => {
+  test("it is the informational blue (a shared token only: P10 forbids colour functions on a button), never red or amber, and a selected box overrides it", () => {
     const r = rule(".pgc-tool--fresh");
     expect(r).not.toBe("");
     expect(r).toMatch(/--status-info/);
-    expect(r).not.toMatch(/--accent|--danger|--status-warn|red|amber/);
+    expect(r).toMatch(/--surface-2/);
+    expect(r).not.toMatch(/--accent|--danger|--status-warn|red|amber|color-mix|#[0-9a-fA-F]{3,8}\b/);
     expect(css.indexOf(".pgc-tool--fresh {")).toBeLessThan(css.indexOf('.pgc-tool[aria-pressed="true"]'));
   });
 
