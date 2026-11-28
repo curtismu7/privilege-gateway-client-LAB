@@ -7,6 +7,7 @@ import "../diagram-kit/diagram-kit.css";
 import Icon from "../Icon.jsx";
 import { ICONS } from "../verdictView.js";
 import { visible } from "../safeText.js";
+import Json from "../components/JsonPane.jsx";
 import { graphOf, outcomeNode, pathEdges, stepForHop } from "../diagrams/callPath.js";
 
 // The call-path diagram: ReactFlow through the shared diagram-kit, drawn ENTIRELY from diagram-studio/1 data (diagrams/pgc-call-path.json, loaded by
@@ -29,7 +30,7 @@ function Box({ data }) {
       ))}
       <p className="pgc-dgbox__t">{verdictId && ICONS[verdictId] ? <Icon name={ICONS[verdictId]} /> : null}<span>{visible(data.label)}</span>{data.outcome ? <span className="pgc-dgbox__tag" data-testid="dg-outcome-tag">This run</span> : null}</p>
       {data.sub?.length && (open || !verdictId) ? (open ? <ul className="pgc-dgbox__sub">{data.sub.map((s) => <li key={s}>{visible(s)}</li>)}</ul> : <p className="pgc-dgbox__s">{visible(data.sub[0])}</p>) : null}
-      {data.passport ? <Passport p={data.passport} /> : null}
+      {data.passport ? <Passport p={data.passport} JsonView={Json} /> : null}
     </div>
   );
 }
@@ -131,7 +132,7 @@ function Canvas({ diagram, graph, hops, verdictId, activeStep, moved, onMove, op
 }
 
 export default function CallPathDiagram({ diagram, hops, verdictId, selectedHop, moved, onMove, open, setOpen, refit }) {
-  const graph = useMemo(() => graphOf(diagram), [diagram]);
+  const graph = useMemo(() => graphOf(diagram, hops), [diagram, hops]);
   const hop = selectedHop != null ? (hops ?? []).find((h) => h.n === selectedHop) : null;
   const activeStep = stepForHop(diagram, hop);
   return (

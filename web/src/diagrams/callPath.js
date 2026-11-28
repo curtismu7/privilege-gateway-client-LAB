@@ -4,12 +4,30 @@ import { loadDiagram } from "./loadDiagram.js";
 
 export const CALL_PATH = "pgc-call-path";
 
-/** The diagram as the kit's graph ({ nodes, edges, groups }): a diagram-studio/1 document already is one. */
-export const graphOf = (d) => ({
-  nodes: d.nodes.map((n) => ({ id: n.id, label: n.label, sub: n.sub, group: n.group })),
-  edges: d.edges.map((e) => ({ source: e.source, target: e.target, label: e.label })),
-  groups: d.groups,
-});
+/** The diagram as the kit's graph ({ nodes, edges, groups }): a diagram-studio/1 document already is one. `hops` (the run's hops, optional)
+ * ride on the edges their step walks: the expanded box shows the run's API calls under Sent / Received (the kit's Passport, JsonView required). */
+export function graphOf(d, hops = []) {
+  // step index -> the edges it walks; each run hop lands on its step's edges (the same rule pathEdges uses).
+  const byStep = new Map();
+  for (const h of Array.isArray(hops) ? hops : []) {
+    if (h.verdict === "skip") continue;
+    const i = stepForHop(d, h);
+    if (i < 0) continue;
+    const call = {
+      title: h.label ?? h.kind, fact: h.fact ?? "", verdict: h.verdict === "ok" ? "ok" : h.verdict === "deny" ? "deny" : h.verdict,
+      request: h.request, response: h.response,
+    };
+    for (const e of d.steps[i].edges) (byStep.get(e) ?? byStep.set(e, []).get(e)).push(call);
+  }
+  return {
+    nodes: d.nodes.map((n) => ({ id: n.id, label: n.label, sub: n.sub, group: n.group })),
+    edges: d.edges.map((e, i) => {
+      const calls = byStep.get(i);
+      return { source: e.source, target: e.target, label: e.label, ...(calls ? { hop: calls[0] } : {}) };
+    }),
+    groups: d.groups,
+  };
+}
 
 /** The step (index into d.steps) a hop is the walk of, or -1. A step names its hop as `kind` or `kind:verdict` (the verdict form is tried first), with the shared hop-catalog kinds. */
 export function stepForHop(d, hop) {
