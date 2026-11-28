@@ -243,7 +243,7 @@ describe("switching mode or resetting with the views on", () => {
     click(within(reel).getByTestId("step-next"));
     expect(tid("evidence-counter")).toHaveTextContent("Message 1 of 8");
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(tid("evidence-counter")).toHaveTextContent("No run yet");
     view("tokens");
     expect(tid("tokens-none")).toBeInTheDocument();

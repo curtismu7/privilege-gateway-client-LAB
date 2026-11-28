@@ -135,7 +135,7 @@ describe("stories", () => {
   test("Real: the Mock-only stories are marked, cannot run and say why; a story that does run in Real uses a door Real has", async () => {
     await mount({ env: REAL_ENV });
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(within(tid("story-select")).getByText(/S04.*\(Mock only\)/)).toBeInTheDocument();
     pick("S04");
     expect(tid("story-block")).toHaveTextContent(/runs in Mock only/);
@@ -148,7 +148,7 @@ describe("stories", () => {
   test("Real: ?story=S04 opens the story but does not run it and does not switch the mode", async () => {
     // The lab starts in Real (configured), so the link is read in Real.
     await mount({ env: { ...REAL_ENV, MODE: "real" } }, "?story=S04");
-    expect(tid("sim-banner")).toHaveAttribute("data-state", "live");
+    expect(tid("mode-status")).toHaveAttribute("data-source", "real");
     expect(await screen.findByTestId("story-block")).toHaveTextContent(/runs in Mock only/);
     expect(t.calls.filter((c) => c.path === "/api/call")).toHaveLength(0);
     expect(word()).toBe("Ready");
@@ -237,7 +237,7 @@ describe("mode and sign-in states", () => {
   test("Real page login not configured: the Sign in control is disabled with the how-to (pi.flow form, no redirect), and the login note says the identity is the key's", async () => {
     await mount({ env: REAL_ENV });
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(tid("rail-sign-in")).toBeDisabled();
     expect(tid("rail-sign-in").title).toMatch(/PGC_PINGONE_\*.*pi\.flow/s);
     expect(tid("login-note")).toHaveTextContent(/identity of the door's agent key.*declared by its own settings/);
@@ -245,7 +245,7 @@ describe("mode and sign-in states", () => {
   test("Real page login configured: the Sign in control opens the shared password dialog (no persona picker)", async () => {
     await mount({ env: REAL_ENV, authConfig: { workspace: "default", source: "mock", idp: null, mock: { enabled: false, available: false, refusal: "disabled" }, real: { flow: "pi.flow", configured: true, problems: [] } } });
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(tid("rail-sign-in")).not.toBeDisabled();
     click("sign-in");
     const dlg = await screen.findByTestId("signin-dialog");
@@ -282,7 +282,7 @@ describe("mode and sign-in states", () => {
 });
 
 describe("presenter mode and the talk track", () => {
-  test("Present turns on larger type and opens the talk track beside the page; the banner is still first in main; Esc/P and the button turn it off", async () => {
+  test("Present turns on larger type and opens the talk track beside the page; the mode status is still first in main; Esc/P and the button turn it off", async () => {
     await mount();
     expect(document.documentElement.dataset.presenter).toBe("0");
     click("presenter");
@@ -290,7 +290,7 @@ describe("presenter mode and the talk track", () => {
     expect(tid("presenter")).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByTestId("talk-track-dialog")).toBeInTheDocument();
     expect(document.documentElement.dataset.talk).toBe("open");
-    expect(document.querySelector("main").firstElementChild).toBe(tid("sim-banner"));
+    expect(document.querySelector("main").firstElementChild).toBe(tid("mode-status"));
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(document.documentElement.dataset.presenter).toBe("0");
     fireEvent.keyDown(document.body, { key: "p" });

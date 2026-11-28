@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import TopMenu from "./top-menu/TopMenu.jsx";
 import ShelfLink from "./components/ShelfLink.jsx";
-import SimulationBanner from "./Banner.jsx";
+import ModeModal from "./mode-modal/ModeModal.jsx";
 import VerdictCard from "./VerdictCard.jsx";
 import IdentityRail from "./IdentityRail.jsx";
 import ToolsTab from "./ToolsTab.jsx";
@@ -22,6 +22,12 @@ import { useRunStepper } from "./panels/useRunStepper.js";
 import { useLab } from "./useLab.js";
 import { useTheme } from "./useTheme.js";
 import { cardFor, runLook } from "./verdictView.js";
+
+// The Real-or-mock modal (shared mode-modal) replaces the long simulation banner. The Real line names the gateway origin when the server reports one.
+export const modeLines = (origin) => ({
+  mock: "Everything here is simulated inside this lab's own process: the gateway, its three doors, the tools, the tokens and the identities. Nothing leaves this machine, and held calls, scenarios and the agent chat are simulated too.",
+  real: `Calls go to the gateway named in this lab's own settings${origin ? ` (${origin})` : ""}, with the agent key kept for the chosen door on this server. The gateway does not report its own checks, so each decision here is observed (read from the answer) or inferred (concluded from it).`,
+});
 
 // Why a redirect sign-in came back without signing in, in words (the code comes from this lab's own /callback, never from PingOne's page).
 const SIGNIN_ERROR = {
@@ -81,7 +87,7 @@ function skipToMain(e) {
   m?.focus();
   m?.scrollIntoView?.({ block: "start" });
 }
-function Shell({ children, topMenu, brand }) {
+function Shell({ children, topMenu, brand, modal }) {
   return (
     <>
       <a className="pgc-skip" href="#pgc-main" onClick={skipToMain} data-testid="skip-link">Skip to main content</a>
@@ -94,6 +100,7 @@ function Shell({ children, topMenu, brand }) {
         {topMenu}
       </header>
       <main className="pgc-main" id="pgc-main" tabIndex={-1}>{children}</main>
+      {modal}
     </>
   );
 }
@@ -272,10 +279,13 @@ export default function App() {
     </TopMenu>
   );
 
+  // One element for both returns below, so the modal never remounts (and loses a click or focus) when the lab finishes loading. Held while the lab is loading
+  // so a Real lab never flashes MOCK first; a load error reads as MOCK, the cautious label.
+  const modal = <ModeModal key="mode-modal" mode={source} lines={modeLines(source === "real" ? lab.info?.gateway?.origin : null)} suppress={lab.boot === "loading"} storageKey="pgc-mode" />;
+
   if (lab.boot !== "ready") {
     return (
-      <Shell topMenu={topMenu} brand={brand}>
-        <SimulationBanner source="mock" />
+      <Shell topMenu={topMenu} brand={brand} modal={modal}>
         {lab.boot === "loading"
           ? <p className="pgc-note" data-testid="boot-loading">Loading…</p>
           : (
@@ -310,8 +320,7 @@ export default function App() {
   const pick = (name) => { lab.setSelectedTool(name); setTab("args"); };
 
   return (
-    <Shell topMenu={topMenu} brand={brand}>
-      <SimulationBanner source={source} origin={source === "real" ? lab.info.gateway?.origin : null} />
+    <Shell topMenu={topMenu} brand={brand} modal={modal}>
       <ModeStatus info={lab.info} signedIn={lab.me?.source === "real-login"} />
       {signinError && (
         <p className="pgc-note pgc-note--hold" role="alert" data-testid="signin-error">{SIGNIN_ERROR[signinError] ?? "The sign-in did not complete. Try Sign in again."}</p>

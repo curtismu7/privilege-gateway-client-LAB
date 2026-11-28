@@ -19,7 +19,7 @@
     {
       "n": 1,
       "title": "Pick the door",
-      "tell": "Choose lab-banking-full. The banner at the top says the gateway is simulated; the identity rail shows the identity the simulated gateway evaluates.",
+      "tell": "Choose lab-banking-full. The modal that opens the page says MOCK, so the gateway is simulated; the identity rail shows the identity the simulated gateway evaluates.",
       "say": "One door, one policy, one identity being evaluated.",
       "why": "A door is a standing endpoint. Which tools it offers is decided by the policy behind it, not by the client."
     },

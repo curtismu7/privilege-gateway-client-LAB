@@ -22,6 +22,7 @@ const UNITS = [
   ["signin-dialog", "signin-dialog.sha256", ["SignInDialog.jsx"]],
   ["floating-dialog", "floating-dialog.sha256", ["FloatingDialog.jsx", "floating-dialog.css", "floating-dialog.test.jsx", "geometry.js", "useFloatingPanel.js"]],
   ["evidence", "evidence.sha256", ["ActorCard.jsx", "MovieReel.jsx", "SequenceView.jsx", "StepDetailPanel.jsx", "Tag.jsx", "evidence.css", "evidence.test.jsx", "fixtures.js", "lanes.js", "safeText.js"]],
+  ["mode-modal", "mode-modal.sha256", ["ModeModal.jsx", "mode-modal.css"]],
   [".", "safeText.sha256", ["safeText.js"]],
   ["diagram-kit", "diagram-kit.sha256", ["DiagramKit.jsx", "DiagramKit.test.jsx", "diagram-kit.css", "diagramKit.js", "diagramKit.test.js"]],
   ["gateway-trace", "gateway-trace.sha256", ["GatewayTrace.jsx", "gateway-trace.css", "gateway-trace.test.jsx"], null, ["gatewayTrace.js"]],

@@ -2,7 +2,7 @@
 """Fix pass B2 and B3: no red on a refusal, a held call or any `note` row, outside the dialogs too (Evidence tab, Arguments response, Tokens).
 
 Real Chromium, computed colours. Every element under the stage and the rail is scanned (text, border, background, SVG fill and stroke); a colour
-whose hue is red and that is not one of the shared standard's own red parts (Sign in, the header rule, the banner edge, the Mock/Real select) fails.
+whose hue is red and that is not one of the shared standard's own red parts (Sign in, the header rule, the Mock/Real select) fails.
 Not part of `npm test`. Start a Mock lab, then:
 
     IDP=mock ALLOW_MOCK_SIGNIN=1 PORT=7971 npm start
@@ -159,6 +159,13 @@ def real_checks(browser, theme):
 if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
+        # Real-or-mock modal (shared mode-modal): every context starts with it dismissed, so it never covers a click.
+        _new_context = browser.new_context
+        def _dismissed_context(*a, **k):
+            c = _new_context(*a, **k)
+            c.add_init_script("try{sessionStorage.setItem('pgc-mode-seen-mock','1');sessionStorage.setItem('pgc-mode-seen-real','1')}catch(e){}")
+            return c
+        browser.new_context = _dismissed_context
         for (w, h) in ((1440, 900), (375, 812)):
             for theme in ("light", "dark"):
                 run(browser, w, h, theme)

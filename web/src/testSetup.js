@@ -3,7 +3,8 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
-afterEach(() => cleanup());
+// The Real-or-mock modal remembers a dismissal in sessionStorage for the rest of the session: start every test with it showing.
+afterEach(() => { cleanup(); try { sessionStorage.clear(); } catch { /* none */ } });
 
 // Some Node versions expose a half-working global localStorage that shadows jsdom's; use a plain in-memory one.
 if (typeof globalThis.localStorage?.clear !== "function") {

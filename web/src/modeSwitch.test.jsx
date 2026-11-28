@@ -24,11 +24,11 @@ describe("a Mock/Real switch and the evidence views", () => {
     fireEvent.click(within(tid("epanel-reel")).getByTestId("step-next"));
     await waitFor(() => expect(tid("evidence-counter")).toHaveTextContent("Message 1 of"));
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(tid("evidence-counter")).toHaveTextContent("No run yet");
     expect(within(tid("epanel-reel")).getByTestId("reel-none")).toBeInTheDocument();
     fireEvent.change(tid("mode-select"), { target: { value: "mock" } });
-    await waitFor(() => expect(tid("sim-banner")).not.toHaveAttribute("data-state"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "mock"));
     expect(tid("evidence-counter")).toHaveTextContent("No run yet");
   });
 
@@ -52,7 +52,7 @@ describe("a Mock/Real switch and the evidence views", () => {
     await screen.findByTestId("verdict-card");
     expect(screen.getByRole("heading", { name: "Who the gateway evaluates" })).toBeInTheDocument();
     fireEvent.change(tid("mode-select"), { target: { value: "real" } });
-    await waitFor(() => expect(tid("sim-banner")).toHaveAttribute("data-state", "live"));
+    await waitFor(() => expect(tid("mode-status")).toHaveAttribute("data-source", "real"));
     expect(screen.getByRole("heading", { name: "Identity this lab declares" })).toBeInTheDocument();
     expect(screen.queryByText("Who the gateway evaluates")).toBeNull();
     expect(tid("gateway-identity")).toHaveTextContent("Identity declared by this lab's settings");
@@ -77,18 +77,19 @@ describe("a Mock/Real switch and the evidence views", () => {
   });
 
   // N9: a keyboard user can skip the header controls.
-  test("the first tab stop is a 'Skip to main content' link that moves focus to main; the banner is still main's first child", async () => {
+  test("the first tab stop is a 'Skip to main content' link that moves focus to main; the mode status is main's first child", async () => {
     const t = createTestApi();
     vi.stubGlobal("fetch", fetchFrom(t.api));
     render(<App />);
     await screen.findByTestId("verdict-card");
+    fireEvent.click(tid("mode-modal-ok")); // the open modal autofocuses Got it and takes the first Tab: close it first
     const tabbable = [...document.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea, [tabindex]:not([tabindex="-1"])')];
     expect(tabbable[0]).toBe(tid("skip-link"));
     expect(tid("skip-link")).toHaveTextContent("Skip to main content");
     expect(tid("skip-link").getAttribute("href")).toBe("#pgc-main");
     const main = document.querySelector("main");
     expect(main.id).toBe("pgc-main");
-    expect(main.firstElementChild).toBe(tid("sim-banner"));
+    expect(main.firstElementChild).toBe(tid("mode-status"));
     fireEvent.click(tid("skip-link"));
     expect(document.activeElement).toBe(main);
   });
